@@ -1,7 +1,11 @@
 """Command-line interface for fai."""
 
 import argparse
+import contextlib
+import sys
 from pathlib import Path
+
+from fai.orchestrator import run_conversation
 
 
 def main() -> None:
@@ -22,6 +26,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # TODO: Implement main logic
-    print(f"Face image: {args.face_image}")
-    print(f"Text mode: {args.text}")
+    # Validate face image exists
+    if not args.face_image.exists():
+        print(f"Error: Face image not found: {args.face_image}", file=sys.stderr)
+        sys.exit(1)
+
+    with contextlib.suppress(KeyboardInterrupt):
+        run_conversation(args.face_image, text_mode=args.text)
