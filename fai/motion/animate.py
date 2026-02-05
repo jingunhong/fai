@@ -136,7 +136,7 @@ def _animate_with_specific_backend(
     backend_cls = _BACKENDS.get(backend_name)
     if backend_cls is None:
         raise ValueError(
-            f"Unknown backend: {backend_name}. " f"Available: {list(_BACKENDS.keys())}"
+            f"Unknown backend: {backend_name}. Available: {list(_BACKENDS.keys())}"
         )
 
     backend_instance = backend_cls()

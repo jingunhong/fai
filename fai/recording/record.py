@@ -10,7 +10,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from fai.motion.backend import DEFAULT_FPS
+from fai.motion.backend import DEFAULT_FPS, write_audio_wav
 from fai.types import AudioData, VideoFrame
 
 
@@ -146,14 +146,7 @@ def save_audio_wav(audio: AudioData, path: Path) -> None:
     if len(audio.samples) == 0:
         raise ValueError("audio samples cannot be empty")
 
-    # Convert float32 [-1, 1] to int16 for WAV
-    samples_int16 = (audio.samples * 32767).astype(np.int16)
-
-    with wave.open(str(path), "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(audio.sample_rate)
-        wav_file.writeframes(samples_int16.tobytes())
+    write_audio_wav(audio, path)
 
 
 def save_video_frames(
