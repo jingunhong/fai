@@ -226,6 +226,8 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 
 ### TODO (Priority Order)
 
+#### Completed (MVP)
+
 - [x] `P1` Audio playback: Play synthesized speech audio through speakers during response
 - [x] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
 - [x] `P3` Error recovery: Add retry logic with exponential backoff for API failures
@@ -234,3 +236,31 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P6` Session recording: Save conversation audio/video to files
 - [x] `P7` Multiple voices: Support voice selection via CLI flag
 - [x] `P8` Streaming mode: Low-latency streaming architecture
+
+#### Code Quality
+
+- [ ] `P9` Replace assertions: Convert 5 `assert` statements to explicit exception handling (render/display.py, motion/wav2lip.py, motion/sadtalker.py)
+- [ ] `P10` Structured logging: Add logging module with configurable log levels for debugging
+- [ ] `P11` API key validation: Validate required API keys at startup with clear error messages
+
+#### Features
+
+- [ ] `P12` Model selection: Add `--model` CLI flag to choose specific LLM models (gpt-4o, gpt-4o-mini, claude-sonnet, claude-haiku)
+- [ ] `P13` Conversation trimming: Limit conversation history length for long sessions (token counting + oldest message removal)
+- [ ] `P14` Request timeouts: Add configurable timeout for API calls via `--timeout` flag
+- [ ] `P15` Session playback: Add `--playback` mode to replay recorded sessions from JSON metadata
+- [ ] `P16` Whisper model selection: Add `--whisper-model` flag for local/API Whisper model choice
+- [ ] `P17` Emotion detection: Detect user emotion from voice/text and adjust AI response tone
+
+#### Infrastructure
+
+- [ ] `P18` CI/CD pipeline: GitHub Actions for automated testing, linting, and coverage checks
+- [ ] `P19` Docker support: Dockerfile and docker-compose for consistent deployment
+- [ ] `P20` Configuration file: Support `fai.toml` or `config.yaml` for persistent settings
+
+#### Future Enhancements
+
+- [ ] `P21` Web UI: Browser-based interface as alternative to CLI
+- [ ] `P22` Multi-character: Support multiple AI characters in same session
+- [ ] `P23` Real-time lip-sync streaming: Lip-sync in streaming mode (requires faster backend)
+- [ ] `P24` Local LLM support: Add Ollama/llama.cpp as dialogue backend option
