@@ -204,14 +204,3 @@ def _apply_breathing_effect(image: np.ndarray, timestamp_ms: int) -> np.ndarray:
     )
 
     return animated
-
-
-# Keep old helper function names for backwards compatibility in tests
-def _calculate_audio_duration_ms(audio: AudioData) -> int:
-    """Calculate audio duration in milliseconds (deprecated, use backend module)."""
-    return calculate_audio_duration_ms(audio)
-
-
-def _apply_animation_effect(image: np.ndarray, timestamp_ms: int) -> np.ndarray:
-    """Apply animation effect (deprecated, use _apply_breathing_effect)."""
-    return _apply_breathing_effect(image, timestamp_ms)
