@@ -121,10 +121,12 @@ class Wav2LipBackend:
             output_path: Path for output video.
 
         Raises:
-            RuntimeError: If inference fails.
+            RuntimeError: If inference fails or paths not configured.
         """
-        assert self._wav2lip_path is not None
-        assert self._checkpoint_path is not None
+        if self._wav2lip_path is None:
+            raise RuntimeError("Wav2Lip path not configured")
+        if self._checkpoint_path is None:
+            raise RuntimeError("Wav2Lip checkpoint path not configured")
 
         cmd = [
             "python",

@@ -204,6 +204,32 @@ def test_sadtalker_generate_frames_finds_output_video(
         assert all(isinstance(f, VideoFrame) for f in frames)
 
 
+def test_sadtalker_run_inference_raises_when_path_not_configured(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify _run_inference raises when sadtalker_path is None."""
+    backend = SadTalkerBackend()
+    backend._sadtalker_path = None
+    backend._checkpoint_dir = Path("/some/checkpoints")
+
+    with pytest.raises(RuntimeError, match="SadTalker path not configured"):
+        backend._run_inference(Path("/face.png"), Path("/audio.wav"), Path("/output"))
+
+
+def test_sadtalker_run_inference_raises_when_checkpoint_dir_not_configured(
+    tmp_path: Path,
+) -> None:
+    """Verify _run_inference raises when checkpoint_dir is None."""
+    backend = SadTalkerBackend()
+    backend._sadtalker_path = tmp_path
+    backend._checkpoint_dir = None
+
+    with pytest.raises(
+        RuntimeError, match="SadTalker checkpoint directory not configured"
+    ):
+        backend._run_inference(Path("/face.png"), Path("/audio.wav"), Path("/output"))
+
+
 def test_sadtalker_generate_frames_subprocess_failure(
     tmp_path: Path, sample_image: np.ndarray, sample_audio: AudioData
 ) -> None:

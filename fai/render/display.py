@@ -34,7 +34,8 @@ def display(frames: Iterator[VideoFrame]) -> None:
 
             # Calculate when this frame should be displayed
             # (playback_start_ns is always set when start_time_ms is set)
-            assert playback_start_ns is not None
+            if playback_start_ns is None:
+                raise RuntimeError("playback_start_ns not initialized")
             frame_offset_ms = frame.timestamp_ms - start_time_ms
             target_time_ns = playback_start_ns + (frame_offset_ms * 1_000_000)
 

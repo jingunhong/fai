@@ -222,7 +222,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] Render component (OpenCV window display with frame timing)
 - [x] Orchestrator (main conversation loop)
 - [x] CLI interface (`python -m fai` with argparse)
-- [x] Comprehensive test suite (264 tests, all passing)
+- [x] Comprehensive test suite (268 tests, all passing)
 
 ### TODO (Priority Order)
 
@@ -239,7 +239,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 
 #### Code Quality
 
-- [ ] `P9` Replace assertions: Convert 5 `assert` statements to explicit exception handling (render/display.py, motion/wav2lip.py, motion/sadtalker.py)
+- [x] `P9` Replace assertions: Convert 5 `assert` statements to explicit exception handling (render/display.py, motion/wav2lip.py, motion/sadtalker.py)
 - [ ] `P10` Structured logging: Add logging module with configurable log levels for debugging
 - [ ] `P11` API key validation: Validate required API keys at startup with clear error messages
 

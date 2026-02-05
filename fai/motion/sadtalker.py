@@ -125,10 +125,12 @@ class SadTalkerBackend:
             output_dir: Directory for output video.
 
         Raises:
-            RuntimeError: If inference fails.
+            RuntimeError: If inference fails or paths not configured.
         """
-        assert self._sadtalker_path is not None
-        assert self._checkpoint_dir is not None
+        if self._sadtalker_path is None:
+            raise RuntimeError("SadTalker path not configured")
+        if self._checkpoint_dir is None:
+            raise RuntimeError("SadTalker checkpoint directory not configured")
 
         cmd = [
             "python",

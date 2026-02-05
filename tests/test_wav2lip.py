@@ -205,6 +205,34 @@ def test_wav2lip_generate_frames_reads_output_video(
         assert all(isinstance(f, VideoFrame) for f in frames)
 
 
+def test_wav2lip_run_inference_raises_when_path_not_configured(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify _run_inference raises when wav2lip_path is None."""
+    backend = Wav2LipBackend()
+    backend._wav2lip_path = None
+    backend._checkpoint_path = Path("/some/checkpoint.pth")
+
+    with pytest.raises(RuntimeError, match="Wav2Lip path not configured"):
+        backend._run_inference(
+            Path("/face.png"), Path("/audio.wav"), Path("/output.mp4")
+        )
+
+
+def test_wav2lip_run_inference_raises_when_checkpoint_not_configured(
+    tmp_path: Path,
+) -> None:
+    """Verify _run_inference raises when checkpoint_path is None."""
+    backend = Wav2LipBackend()
+    backend._wav2lip_path = tmp_path
+    backend._checkpoint_path = None
+
+    with pytest.raises(RuntimeError, match="Wav2Lip checkpoint path not configured"):
+        backend._run_inference(
+            Path("/face.png"), Path("/audio.wav"), Path("/output.mp4")
+        )
+
+
 def test_wav2lip_generate_frames_subprocess_failure(
     tmp_path: Path, sample_image: np.ndarray, sample_audio: AudioData
 ) -> None:
