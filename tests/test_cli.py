@@ -1002,3 +1002,86 @@ def test_cli_timeout_negative_exits_with_error(
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "--timeout must be a positive number" in captured.err
+
+
+# Tests for --playback flag
+
+
+def test_cli_playback_calls_replay_session(tmp_path: Path) -> None:
+    """Verify --playback calls replay_session with session directory."""
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+
+    with (
+        patch("sys.argv", ["fai", "--playback", str(session_dir)]),
+        patch("fai.cli.replay_session") as mock_replay,
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 0
+    mock_replay.assert_called_once_with(session_dir)
+
+
+def test_cli_playback_missing_dir_exits_with_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Verify --playback with nonexistent directory exits with error."""
+    nonexistent = tmp_path / "nonexistent_session"
+
+    with (
+        patch("sys.argv", ["fai", "--playback", str(nonexistent)]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Session directory not found" in captured.err
+
+
+def test_cli_playback_does_not_require_face_image(tmp_path: Path) -> None:
+    """Verify --playback works without face_image argument."""
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+
+    with (
+        patch("sys.argv", ["fai", "--playback", str(session_dir)]),
+        patch("fai.cli.replay_session") as mock_replay,
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 0
+    mock_replay.assert_called_once()
+
+
+def test_cli_playback_does_not_validate_api_keys(tmp_path: Path) -> None:
+    """Verify --playback skips API key validation."""
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+
+    with (
+        patch("sys.argv", ["fai", "--playback", str(session_dir)]),
+        patch("fai.cli.replay_session"),
+        patch("fai.cli.validate_api_keys") as mock_validate,
+        pytest.raises(SystemExit),
+    ):
+        cli.main()
+
+    mock_validate.assert_not_called()
+
+
+def test_cli_playback_handles_keyboard_interrupt(tmp_path: Path) -> None:
+    """Verify --playback handles KeyboardInterrupt gracefully."""
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+
+    with (
+        patch("sys.argv", ["fai", "--playback", str(session_dir)]),
+        patch("fai.cli.replay_session", side_effect=KeyboardInterrupt),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 0

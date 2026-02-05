@@ -10,8 +10,11 @@ from typing import Any
 import cv2
 import numpy as np
 
-from fai.motion.backend import DEFAULT_FPS, write_audio_wav
+from fai.logging import get_logger
+from fai.motion.backend import DEFAULT_FPS, read_video_frames, write_audio_wav
 from fai.types import AudioData, VideoFrame
+
+logger = get_logger(__name__)
 
 
 class SessionRecorder:
@@ -231,3 +234,83 @@ def load_audio_wav(path: Path) -> AudioData:
         samples_float32 = samples_int16.astype(np.float32) / 32767.0
 
     return AudioData(samples=samples_float32, sample_rate=sample_rate)
+
+
+def replay_session(
+    session_dir: Path,
+    play_audio_fn: Any = None,
+    display_fn: Any = None,
+) -> None:
+    """Replay a recorded session from disk.
+
+    Loads session metadata and replays each turn by playing response audio
+    and displaying video frames.
+
+    Args:
+        session_dir: Path to the session directory containing session.json.
+        play_audio_fn: Function to play audio (signature: (AudioData, blocking=bool)).
+            If None, imports from fai.voice.playback.
+        display_fn: Function to display video frames
+            (signature: (Iterator[VideoFrame],)).
+            If None, imports from fai.render.display.
+
+    Raises:
+        FileNotFoundError: If session directory or session.json doesn't exist.
+    """
+    if not session_dir.exists():
+        raise FileNotFoundError(f"Session directory not found: {session_dir}")
+
+    metadata = load_session_metadata(session_dir)
+
+    # Lazy imports to avoid circular dependencies and allow injection for testing
+    if play_audio_fn is None:
+        from fai.voice.playback import play_audio
+
+        play_audio_fn = play_audio
+    if display_fn is None:
+        from fai.render.display import display
+
+        display_fn = display
+
+    session_id = metadata.get("session_id", "unknown")
+    total_turns = metadata.get("total_turns", 0)
+    print(f"Replaying session {session_id} ({total_turns} turns)")
+
+    for turn in metadata.get("turns", []):
+        turn_num = turn["turn"]
+        turn_dir = session_dir / f"turn_{turn_num:03d}"
+
+        user_text = turn.get("user_text", "")
+        response_text = turn.get("response_text", "")
+
+        print(f"\n--- Turn {turn_num} ---")
+        print(f"You: {user_text}")
+        print(f"AI: {response_text}")
+
+        files = turn.get("files", {})
+
+        # Play response audio and display video
+        has_audio = "response_audio" in files
+        has_video = "response_video" in files
+
+        if has_audio:
+            audio_path = turn_dir / files["response_audio"]
+            if audio_path.exists():
+                logger.debug("Loading response audio: %s", audio_path)
+                audio = load_audio_wav(audio_path)
+                # Play non-blocking so video can display simultaneously
+                blocking = not has_video
+                play_audio_fn(audio, blocking=blocking)
+            else:
+                logger.warning("Response audio file missing: %s", audio_path)
+
+        if has_video:
+            video_path = turn_dir / files["response_video"]
+            if video_path.exists():
+                logger.debug("Loading response video: %s", video_path)
+                frames = read_video_frames(video_path)
+                display_fn(frames)
+            else:
+                logger.warning("Response video file missing: %s", video_path)
+
+    print(f"\nSession replay complete ({total_turns} turns).")

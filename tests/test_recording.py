@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from fai.recording import SessionRecorder
+from fai.recording import SessionRecorder, replay_session
 from fai.recording.record import (
     load_audio_wav,
     load_session_metadata,
@@ -501,3 +501,227 @@ def test_run_conversation_without_recording(
 
     # Verify no recording directory was created
     assert not output_dir.exists()
+
+
+# === replay_session tests ===
+
+
+@pytest.fixture  # type: ignore[misc]
+def recorded_session(
+    tmp_path: Path, sample_audio: AudioData, sample_frames: list[VideoFrame]
+) -> Path:
+    """Create a recorded session on disk for replay testing."""
+    recorder = SessionRecorder(tmp_path)
+    recorder.start()
+    recorder.record_turn(
+        user_text="Hello",
+        response_text="Hi there!",
+        response_audio=sample_audio,
+        video_frames=sample_frames,
+    )
+    recorder.record_turn(
+        user_text="How are you?",
+        response_text="I'm doing great!",
+        response_audio=sample_audio,
+        video_frames=sample_frames,
+    )
+    recorder.finalize(metadata={"text_mode": True, "backend": "none"})
+    return recorder.session_dir
+
+
+def test_replay_session_prints_turns(
+    recorded_session: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Verify replay_session prints turn transcripts."""
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(recorded_session, play_audio_fn=mock_play, display_fn=mock_display)
+
+    captured = capsys.readouterr()
+    assert "Replaying session" in captured.out
+    assert "2 turns" in captured.out
+    assert "You: Hello" in captured.out
+    assert "AI: Hi there!" in captured.out
+    assert "You: How are you?" in captured.out
+    assert "AI: I'm doing great!" in captured.out
+    assert "Session replay complete" in captured.out
+
+
+def test_replay_session_plays_audio(
+    recorded_session: Path, sample_audio: AudioData
+) -> None:
+    """Verify replay_session plays response audio for each turn."""
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(recorded_session, play_audio_fn=mock_play, display_fn=mock_display)
+
+    # Audio should be played for each turn (non-blocking when video exists)
+    assert mock_play.call_count == 2
+    for call in mock_play.call_args_list:
+        audio_arg = call[0][0]
+        assert isinstance(audio_arg, AudioData)
+        assert call[1]["blocking"] is False  # non-blocking since video exists
+
+
+def test_replay_session_displays_video(recorded_session: Path) -> None:
+    """Verify replay_session displays video frames for each turn."""
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(recorded_session, play_audio_fn=mock_play, display_fn=mock_display)
+
+    assert mock_display.call_count == 2
+
+
+def test_replay_session_missing_dir_raises() -> None:
+    """Verify replay_session raises FileNotFoundError for missing directory."""
+    nonexistent = Path("/nonexistent/session")
+
+    with pytest.raises(FileNotFoundError, match="Session directory not found"):
+        replay_session(nonexistent)
+
+
+def test_replay_session_missing_metadata_raises(tmp_path: Path) -> None:
+    """Verify replay_session raises FileNotFoundError for missing session.json."""
+    session_dir = tmp_path / "empty_session"
+    session_dir.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="Session metadata not found"):
+        replay_session(session_dir)
+
+
+def test_replay_session_audio_only(tmp_path: Path, sample_audio: AudioData) -> None:
+    """Verify replay_session handles turns with audio but no video."""
+    recorder = SessionRecorder(tmp_path)
+    recorder.start()
+    recorder.record_turn(
+        user_text="Hello",
+        response_text="Hi!",
+        response_audio=sample_audio,
+    )
+    recorder.finalize()
+
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(
+        recorder.session_dir, play_audio_fn=mock_play, display_fn=mock_display
+    )
+
+    # Audio played blocking since no video
+    mock_play.assert_called_once()
+    assert mock_play.call_args[1]["blocking"] is True
+    mock_display.assert_not_called()
+
+
+def test_replay_session_text_only_turn(tmp_path: Path) -> None:
+    """Verify replay_session handles turns with text only (no audio or video)."""
+    recorder = SessionRecorder(tmp_path)
+    recorder.start()
+    recorder.record_turn(
+        user_text="Hello",
+        response_text="Hi!",
+    )
+    recorder.finalize()
+
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(
+        recorder.session_dir, play_audio_fn=mock_play, display_fn=mock_display
+    )
+
+    mock_play.assert_not_called()
+    mock_display.assert_not_called()
+
+
+def test_replay_session_missing_audio_file(tmp_path: Path) -> None:
+    """Verify replay_session handles missing audio file gracefully."""
+    # Create session metadata that references a non-existent audio file
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+    turn_dir = session_dir / "turn_001"
+    turn_dir.mkdir()
+
+    metadata = {
+        "session_id": "test",
+        "created_at": "2026-02-05T12:00:00",
+        "total_turns": 1,
+        "turns": [
+            {
+                "turn": 1,
+                "timestamp": "2026-02-05T12:00:01",
+                "user_text": "Hello",
+                "response_text": "Hi!",
+                "files": {"response_audio": "response_audio.wav"},
+            }
+        ],
+    }
+    with open(session_dir / "session.json", "w") as f:
+        json.dump(metadata, f)
+
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    # Should not raise, just log warning
+    replay_session(session_dir, play_audio_fn=mock_play, display_fn=mock_display)
+
+    mock_play.assert_not_called()
+
+
+def test_replay_session_missing_video_file(tmp_path: Path) -> None:
+    """Verify replay_session handles missing video file gracefully."""
+    session_dir = tmp_path / "session_test"
+    session_dir.mkdir()
+    turn_dir = session_dir / "turn_001"
+    turn_dir.mkdir()
+
+    metadata = {
+        "session_id": "test",
+        "created_at": "2026-02-05T12:00:00",
+        "total_turns": 1,
+        "turns": [
+            {
+                "turn": 1,
+                "timestamp": "2026-02-05T12:00:01",
+                "user_text": "Hello",
+                "response_text": "Hi!",
+                "files": {"response_video": "response_video.mp4"},
+            }
+        ],
+    }
+    with open(session_dir / "session.json", "w") as f:
+        json.dump(metadata, f)
+
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    # Should not raise, just log warning
+    replay_session(session_dir, play_audio_fn=mock_play, display_fn=mock_display)
+
+    mock_display.assert_not_called()
+
+
+def test_replay_session_empty_turns(tmp_path: Path) -> None:
+    """Verify replay_session handles session with no turns."""
+    session_dir = tmp_path / "session_empty"
+    session_dir.mkdir()
+
+    metadata = {
+        "session_id": "empty",
+        "created_at": "2026-02-05T12:00:00",
+        "total_turns": 0,
+        "turns": [],
+    }
+    with open(session_dir / "session.json", "w") as f:
+        json.dump(metadata, f)
+
+    mock_play = MagicMock()
+    mock_display = MagicMock()
+
+    replay_session(session_dir, play_audio_fn=mock_play, display_fn=mock_display)
+
+    mock_play.assert_not_called()
+    mock_display.assert_not_called()

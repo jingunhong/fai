@@ -8,6 +8,7 @@ from pathlib import Path
 from fai.logging import LOG_LEVEL_MAP, setup_logging
 from fai.motion import get_available_backends
 from fai.orchestrator import run_conversation, run_conversation_stream
+from fai.recording import replay_session
 from fai.validation import validate_api_keys
 from fai.voice import get_available_voices
 
@@ -93,6 +94,12 @@ def main() -> None:
         help="Use streaming mode for low-latency response (no lip-sync, no recording)",
     )
     parser.add_argument(
+        "--playback",
+        type=Path,
+        default=None,
+        help="Replay a recorded session from the given session directory",
+    )
+    parser.add_argument(
         "--timeout",
         type=float,
         default=None,
@@ -132,6 +139,18 @@ def main() -> None:
         print(f"Available voices for {args.tts} TTS:")
         for voice in voices:
             print(f"  - {voice}")
+        sys.exit(0)
+
+    # Handle --playback
+    if args.playback is not None:
+        if not args.playback.exists():
+            print(
+                f"Error: Session directory not found: {args.playback}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        with contextlib.suppress(KeyboardInterrupt):
+            replay_session(args.playback)
         sys.exit(0)
 
     # Validate face image is provided and exists
