@@ -18,12 +18,26 @@ fai/
 ├── __init__.py
 ├── __main__.py          # entry point: python -m fai
 ├── cli.py               # argument parsing (argparse)
+├── types.py             # shared data types (AudioData, VideoFrame, etc.)
 ├── perception/          # audio capture + ASR (speech-to-text)
+│   ├── __init__.py      # re-exports public API
+│   ├── record.py        # microphone recording
+│   └── transcribe.py    # OpenAI Whisper transcription
 ├── dialogue/            # LLM response generation
+│   ├── __init__.py
+│   └── generate.py      # OpenAI GPT-4o responses
 ├── voice/               # TTS (text-to-speech)
-├── motion/              # audio → facial animation parameters
-├── render/              # OpenCV display of animated face
-└── orchestrator/        # main conversation loop, component coordination
+│   ├── __init__.py
+│   └── synthesize.py    # OpenAI TTS synthesis
+├── motion/              # audio → facial animation
+│   ├── __init__.py
+│   └── animate.py       # frame generation (placeholder)
+├── render/              # OpenCV display
+│   ├── __init__.py
+│   └── display.py       # video frame display
+└── orchestrator/        # main conversation loop
+    ├── __init__.py
+    └── loop.py          # conversation coordination
 ```
 
 ## CLI Interface
