@@ -9,6 +9,7 @@ dependencies = [
     "sounddevice",
     "opencv-python",
     "numpy",
+    "anthropic>=0.77.1",
 ]
 
 [project.optional-dependencies]

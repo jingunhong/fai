@@ -3,6 +3,18 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from anthropic import (
+    APIConnectionError as AnthropicAPIConnectionError,
+)
+from anthropic import (
+    APITimeoutError as AnthropicAPITimeoutError,
+)
+from anthropic import (
+    InternalServerError as AnthropicInternalServerError,
+)
+from anthropic import (
+    RateLimitError as AnthropicRateLimitError,
+)
 from openai import (
     APIConnectionError,
     APITimeoutError,
@@ -412,3 +424,104 @@ def test_retry_with_backoff_logs_on_exhaustion() -> None:
     mock_logger.warning.assert_called_once()
     call_args = mock_logger.warning.call_args[0]
     assert "All 2 retry attempts failed" in call_args[0] % call_args[1:]
+
+
+# Tests for Anthropic exception handling
+
+
+def test_retry_with_backoff_retries_on_anthropic_rate_limit_error() -> None:
+    """Verify retry on Anthropic RateLimitError."""
+    mock_func = MagicMock(
+        side_effect=[
+            AnthropicRateLimitError(
+                message="Rate limited",
+                response=MagicMock(status_code=429),
+                body=None,
+            ),
+            "success",
+        ]
+    )
+    mock_func.__name__ = "mock_func"
+    decorated = retry_with_backoff()(mock_func)
+
+    with patch("fai.retry.time.sleep"):
+        result = decorated()
+
+    assert result == "success"
+    assert mock_func.call_count == 2
+
+
+def test_retry_with_backoff_retries_on_anthropic_api_connection_error() -> None:
+    """Verify retry on Anthropic APIConnectionError."""
+    mock_func = MagicMock(
+        side_effect=[
+            AnthropicAPIConnectionError(request=MagicMock()),
+            "success",
+        ]
+    )
+    mock_func.__name__ = "mock_func"
+    decorated = retry_with_backoff()(mock_func)
+
+    with patch("fai.retry.time.sleep"):
+        result = decorated()
+
+    assert result == "success"
+    assert mock_func.call_count == 2
+
+
+def test_retry_with_backoff_retries_on_anthropic_api_timeout_error() -> None:
+    """Verify retry on Anthropic APITimeoutError."""
+    mock_func = MagicMock(
+        side_effect=[
+            AnthropicAPITimeoutError(request=MagicMock()),
+            "success",
+        ]
+    )
+    mock_func.__name__ = "mock_func"
+    decorated = retry_with_backoff()(mock_func)
+
+    with patch("fai.retry.time.sleep"):
+        result = decorated()
+
+    assert result == "success"
+    assert mock_func.call_count == 2
+
+
+def test_retry_with_backoff_retries_on_anthropic_internal_server_error() -> None:
+    """Verify retry on Anthropic InternalServerError."""
+    mock_func = MagicMock(
+        side_effect=[
+            AnthropicInternalServerError(
+                message="Server error",
+                response=MagicMock(status_code=500),
+                body=None,
+            ),
+            "success",
+        ]
+    )
+    mock_func.__name__ = "mock_func"
+    decorated = retry_with_backoff()(mock_func)
+
+    with patch("fai.retry.time.sleep"):
+        result = decorated()
+
+    assert result == "success"
+    assert mock_func.call_count == 2
+
+
+def test_retry_with_backoff_exhausts_retries_on_anthropic_error() -> None:
+    """Verify function raises after exhausting retries with Anthropic error."""
+    error = AnthropicRateLimitError(
+        message="Rate limited",
+        response=MagicMock(status_code=429),
+        body=None,
+    )
+    mock_func = MagicMock(side_effect=error)
+    mock_func.__name__ = "mock_func"
+    decorated = retry_with_backoff(max_retries=2)(mock_func)
+
+    with patch("fai.retry.time.sleep"), pytest.raises(AnthropicRateLimitError):
+        decorated()
+
+    # Initial attempt + 2 retries = 3 total
+    assert mock_func.call_count == 3

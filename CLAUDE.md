@@ -25,7 +25,7 @@ fai/
 │   └── transcribe.py    # OpenAI Whisper transcription
 ├── dialogue/            # LLM response generation
 │   ├── __init__.py
-│   └── generate.py      # OpenAI GPT-4o responses
+│   └── generate.py      # OpenAI GPT-4o / Anthropic Claude responses
 ├── voice/               # TTS (text-to-speech) and audio playback
 │   ├── __init__.py
 │   ├── playback.py      # audio playback via sounddevice
@@ -50,12 +50,14 @@ fai/
 uv run fai face.jpg                      # voice mode (default)
 uv run fai face.jpg --text               # text input mode (for debugging)
 uv run fai face.jpg --backend wav2lip    # use specific lip-sync backend
+uv run fai face.jpg --dialogue claude    # use Claude as dialogue backend
 uv run fai --list-backends               # show available backends
 ```
 
 - First positional argument: path to reference face image (required)
 - `--text`: use keyboard input instead of microphone
 - `--backend`: lip-sync backend (auto, wav2lip, sadtalker, none)
+- `--dialogue`: dialogue backend (openai, claude)
 - `--list-backends`: list available backends and exit
 
 ## Architecture
@@ -157,6 +159,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 ## Dependencies (MVP)
 
 - `openai` — Whisper API, LLM, TTS
+- `anthropic` — Claude API for dialogue
 - `python-dotenv` — .env loading
 - `sounddevice` — microphone capture
 - `opencv-python` — video display
@@ -190,7 +193,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P1` Audio playback: Play synthesized speech audio through speakers during response
 - [x] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
 - [x] `P3` Error recovery: Add retry logic with exponential backoff for API failures
-- [ ] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
+- [x] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
 - [ ] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
 - [ ] `P6` Session recording: Save conversation audio/video to files
 - [ ] `P7` Multiple voices: Support voice selection via CLI flag

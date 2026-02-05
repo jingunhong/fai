@@ -33,6 +33,13 @@ def main() -> None:
         help="Lip-sync backend: auto (default), wav2lip, sadtalker, or none",
     )
     parser.add_argument(
+        "--dialogue",
+        type=str,
+        choices=["openai", "claude"],
+        default="openai",
+        help="Dialogue backend: openai (default) or claude",
+    )
+    parser.add_argument(
         "--list-backends",
         action="store_true",
         help="List available lip-sync backends and exit",
@@ -63,4 +70,9 @@ def main() -> None:
         sys.exit(1)
 
     with contextlib.suppress(KeyboardInterrupt):
-        run_conversation(args.face_image, text_mode=args.text, backend=args.backend)
+        run_conversation(
+            args.face_image,
+            text_mode=args.text,
+            backend=args.backend,
+            dialogue_backend=args.dialogue,
+        )

@@ -66,7 +66,9 @@ def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
     ):
         cli.main()
 
-    mock_run.assert_called_once_with(face_path, text_mode=False, backend="none")
+    mock_run.assert_called_once_with(
+        face_path, text_mode=False, backend="none", dialogue_backend="openai"
+    )
 
 
 def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
@@ -80,7 +82,9 @@ def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
     ):
         cli.main()
 
-    mock_run.assert_called_once_with(face_path, text_mode=True, backend="auto")
+    mock_run.assert_called_once_with(
+        face_path, text_mode=True, backend="auto", dialogue_backend="openai"
+    )
 
 
 def test_cli_default_backend_is_auto(tmp_path: Path) -> None:
@@ -97,3 +101,35 @@ def test_cli_default_backend_is_auto(tmp_path: Path) -> None:
     mock_run.assert_called_once()
     _, kwargs = mock_run.call_args
     assert kwargs.get("backend") == "auto"
+
+
+def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None:
+    """Verify --dialogue is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--dialogue", "claude"]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once_with(
+        face_path, text_mode=False, backend="auto", dialogue_backend="claude"
+    )
+
+
+def test_cli_default_dialogue_backend_is_openai(tmp_path: Path) -> None:
+    """Verify default dialogue backend is 'openai'."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("dialogue_backend") == "openai"

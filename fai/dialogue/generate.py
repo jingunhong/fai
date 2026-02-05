@@ -1,8 +1,10 @@
-"""LLM response generation using OpenAI API."""
+"""LLM response generation using OpenAI or Anthropic Claude API."""
 
 import os
-from typing import cast
+from typing import Literal, cast
 
+from anthropic import Anthropic
+from anthropic.types import MessageParam
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import (
@@ -27,10 +29,15 @@ SYSTEM_PROMPT = (
     "when appropriate."
 )
 
+# Type alias for dialogue backend selection
+DialogueBackend = Literal["openai", "claude"]
+
 
 @retry_with_backoff()
 def generate_response(
-    user_text: str, history: list[dict[str, str]]
+    user_text: str,
+    history: list[dict[str, str]],
+    backend: DialogueBackend = "openai",
 ) -> DialogueResponse:
     """Generate an LLM response given user text and conversation history.
 
@@ -38,17 +45,31 @@ def generate_response(
         user_text: The user's current message.
         history: Previous conversation turns, each with "role" and "content" keys.
             Role is either "user" or "assistant".
+        backend: Which LLM backend to use ("openai" or "claude").
 
     Returns:
         DialogueResponse containing the generated text.
 
     Raises:
-        ValueError: If user_text is empty.
-        openai.OpenAIError: If the API call fails.
+        ValueError: If user_text is empty or backend is invalid.
+        openai.OpenAIError: If the OpenAI API call fails.
+        anthropic.APIError: If the Claude API call fails.
     """
     if not user_text.strip():
         raise ValueError("user_text cannot be empty")
 
+    if backend == "claude":
+        return _generate_with_claude(user_text, history)
+    elif backend == "openai":
+        return _generate_with_openai(user_text, history)
+    else:
+        raise ValueError(f"Invalid backend: {backend}. Must be 'openai' or 'claude'.")
+
+
+def _generate_with_openai(
+    user_text: str, history: list[dict[str, str]]
+) -> DialogueResponse:
+    """Generate response using OpenAI GPT-4o."""
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     messages: list[ChatCompletionMessageParam] = [
@@ -71,3 +92,31 @@ def generate_response(
         content = ""
 
     return DialogueResponse(text=content)
+
+
+def _generate_with_claude(
+    user_text: str, history: list[dict[str, str]]
+) -> DialogueResponse:
+    """Generate response using Anthropic Claude."""
+    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+    messages: list[MessageParam] = []
+    for msg in history:
+        role = msg["role"]
+        if role == "user":
+            messages.append({"role": "user", "content": msg["content"]})
+        else:
+            messages.append({"role": "assistant", "content": msg["content"]})
+    messages.append({"role": "user", "content": user_text})
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    )
+
+    content = response.content[0]
+    if content.type == "text":
+        return DialogueResponse(text=content.text)
+    return DialogueResponse(text="")

@@ -7,6 +7,18 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
+from anthropic import (
+    APIConnectionError as AnthropicAPIConnectionError,
+)
+from anthropic import (
+    APITimeoutError as AnthropicAPITimeoutError,
+)
+from anthropic import (
+    InternalServerError as AnthropicInternalServerError,
+)
+from anthropic import (
+    RateLimitError as AnthropicRateLimitError,
+)
 from openai import (
     APIConnectionError,
     APITimeoutError,
@@ -26,11 +38,18 @@ DEFAULT_MAX_DELAY = 60.0  # seconds
 DEFAULT_EXPONENTIAL_BASE = 2.0
 
 # Exceptions that should trigger a retry (transient errors)
+# Includes both OpenAI and Anthropic retryable exceptions
 RETRYABLE_EXCEPTIONS = (
+    # OpenAI exceptions
     APIConnectionError,
     APITimeoutError,
     InternalServerError,
     RateLimitError,
+    # Anthropic exceptions
+    AnthropicAPIConnectionError,
+    AnthropicAPITimeoutError,
+    AnthropicInternalServerError,
+    AnthropicRateLimitError,
 )
 
 

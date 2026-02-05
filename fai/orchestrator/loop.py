@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Literal
 
-from fai.dialogue import generate_response
+from fai.dialogue import DialogueBackend, generate_response
 from fai.motion import animate
 from fai.perception import record_audio, transcribe
 from fai.render import display
@@ -19,6 +19,7 @@ def run_conversation(
     face_image: Path,
     text_mode: bool = False,
     backend: BackendType = "auto",
+    dialogue_backend: DialogueBackend = "openai",
 ) -> None:
     """Run the main conversation loop.
 
@@ -33,6 +34,7 @@ def run_conversation(
         face_image: Path to the reference face image.
         text_mode: If True, use keyboard input. If False, use microphone.
         backend: Lip-sync backend to use for animation.
+        dialogue_backend: LLM backend to use for response generation.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -56,7 +58,7 @@ def run_conversation(
             print(f"You: {user_text}")
 
             # Step 2: Generate LLM response
-            response = generate_response(user_text, history)
+            response = generate_response(user_text, history, backend=dialogue_backend)
             print(f"AI: {response.text}\n")
 
             # Update conversation history
