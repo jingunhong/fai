@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fai.motion import get_available_backends
 from fai.orchestrator import run_conversation
+from fai.voice import get_available_voices
 
 
 def main() -> None:
@@ -47,9 +48,22 @@ def main() -> None:
         help="TTS backend: openai (default) or elevenlabs",
     )
     parser.add_argument(
+        "--voice",
+        type=str,
+        default=None,
+        help="Voice to use for TTS. OpenAI: alloy, ash, coral, echo, fable, onyx, "
+        "nova, sage, shimmer. ElevenLabs: rachel, adam, antoni, bella, domi, elli, "
+        "josh, arnold. Defaults to alloy (OpenAI) or rachel (ElevenLabs).",
+    )
+    parser.add_argument(
         "--list-backends",
         action="store_true",
         help="List available lip-sync backends and exit",
+    )
+    parser.add_argument(
+        "--list-voices",
+        action="store_true",
+        help="List available TTS voices for the selected backend and exit",
     )
     parser.add_argument(
         "--record",
@@ -80,6 +94,14 @@ def main() -> None:
             print("  SadTalker: Set SADTALKER_PATH and SADTALKER_CHECKPOINT_DIR")
         sys.exit(0)
 
+    # Handle --list-voices
+    if args.list_voices:
+        voices = get_available_voices(args.tts)
+        print(f"Available voices for {args.tts} TTS:")
+        for voice in voices:
+            print(f"  - {voice}")
+        sys.exit(0)
+
     # Validate face image is provided and exists
     if args.face_image is None:
         parser.error("face_image is required")
@@ -94,6 +116,7 @@ def main() -> None:
             backend=args.backend,
             dialogue_backend=args.dialogue,
             tts_backend=args.tts,
+            voice=args.voice,
             record=args.record,
             output_dir=args.output_dir,
         )

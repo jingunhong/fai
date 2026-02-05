@@ -3,7 +3,7 @@
 import io
 import os
 import wave
-from typing import Literal
+from typing import Literal, get_args
 
 import numpy as np
 from dotenv import load_dotenv
@@ -28,20 +28,70 @@ DEFAULT_ELEVENLABS_MODEL = "eleven_monolingual_v1"
 # Type alias for TTS backend selection
 TTSBackend = Literal["openai", "elevenlabs"]
 
+# Type aliases for voice selection
+OpenAIVoice = Literal[
+    "alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"
+]
+ElevenLabsVoice = Literal[
+    "rachel", "adam", "antoni", "bella", "domi", "elli", "josh", "arnold"
+]
+
+# ElevenLabs voice ID mapping
+ELEVENLABS_VOICE_IDS: dict[str, str] = {
+    "rachel": "21m00Tcm4TlvDq8ikWAM",
+    "adam": "pNInz6obpgDQGcFmaJgB",
+    "antoni": "ErXwobaYiN019PkySvjV",
+    "bella": "EXAVITQu4vr4xnSDxMaL",
+    "domi": "AZnzlk1XvdvUeBnXmlld",
+    "elli": "MF3mGyEYCl7XYWbV9V6O",
+    "josh": "TxGEqnHWrfWFTfGW9XjX",
+    "arnold": "VR6AewLTigWG4xSOukaG",
+}
+
+
+def get_available_voices(backend: TTSBackend) -> list[str]:
+    """Get available voice names for a given TTS backend.
+
+    Args:
+        backend: Which TTS backend to query ("openai" or "elevenlabs").
+
+    Returns:
+        List of available voice names.
+
+    Raises:
+        ValueError: If backend is invalid.
+    """
+    if backend == "openai":
+        return list(get_args(OpenAIVoice))
+    elif backend == "elevenlabs":
+        return list(get_args(ElevenLabsVoice))
+    else:
+        raise ValueError(
+            f"Invalid backend: {backend}. Must be 'openai' or 'elevenlabs'."
+        )
+
 
 @retry_with_backoff()
-def synthesize(text: str, backend: TTSBackend = "openai") -> AudioData:
+def synthesize(
+    text: str,
+    backend: TTSBackend = "openai",
+    voice: str | None = None,
+) -> AudioData:
     """Synthesize speech audio from text using OpenAI or ElevenLabs TTS API.
 
     Args:
         text: The text to convert to speech.
         backend: Which TTS backend to use ("openai" or "elevenlabs").
+        voice: Voice to use. For OpenAI: alloy, ash, coral, echo, fable, onyx,
+               nova, sage, shimmer. For ElevenLabs: rachel, adam, antoni, bella,
+               domi, elli, josh, arnold. Defaults to "alloy" for OpenAI and
+               "rachel" for ElevenLabs.
 
     Returns:
         AudioData containing the synthesized audio samples and sample rate.
 
     Raises:
-        ValueError: If text is empty or backend is invalid.
+        ValueError: If text is empty, backend is invalid, or voice is invalid.
         openai.OpenAIError: If the OpenAI API call fails.
         elevenlabs.ElevenLabsError: If the ElevenLabs API call fails.
     """
@@ -49,22 +99,38 @@ def synthesize(text: str, backend: TTSBackend = "openai") -> AudioData:
         raise ValueError("text cannot be empty")
 
     if backend == "elevenlabs":
-        return _synthesize_with_elevenlabs(text)
+        return _synthesize_with_elevenlabs(text, voice)
     elif backend == "openai":
-        return _synthesize_with_openai(text)
+        return _synthesize_with_openai(text, voice)
     else:
         raise ValueError(
             f"Invalid backend: {backend}. Must be 'openai' or 'elevenlabs'."
         )
 
 
-def _synthesize_with_openai(text: str) -> AudioData:
-    """Synthesize speech using OpenAI TTS API."""
+def _synthesize_with_openai(text: str, voice: str | None = None) -> AudioData:
+    """Synthesize speech using OpenAI TTS API.
+
+    Args:
+        text: The text to convert to speech.
+        voice: Voice name to use. Defaults to "alloy".
+
+    Raises:
+        ValueError: If voice is not a valid OpenAI voice.
+    """
+    selected_voice = voice or DEFAULT_OPENAI_VOICE
+    valid_voices = get_args(OpenAIVoice)
+    if selected_voice not in valid_voices:
+        raise ValueError(
+            f"Invalid OpenAI voice: {selected_voice}. "
+            f"Must be one of: {', '.join(valid_voices)}"
+        )
+
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     response = client.audio.speech.create(
         model=DEFAULT_OPENAI_MODEL,
-        voice=DEFAULT_OPENAI_VOICE,
+        voice=selected_voice,
         input=text,
         response_format=DEFAULT_RESPONSE_FORMAT,
     )
@@ -76,13 +142,30 @@ def _synthesize_with_openai(text: str) -> AudioData:
     return AudioData(samples=samples, sample_rate=sample_rate)
 
 
-def _synthesize_with_elevenlabs(text: str) -> AudioData:
-    """Synthesize speech using ElevenLabs TTS API."""
+def _synthesize_with_elevenlabs(text: str, voice: str | None = None) -> AudioData:
+    """Synthesize speech using ElevenLabs TTS API.
+
+    Args:
+        text: The text to convert to speech.
+        voice: Voice name to use. Defaults to "rachel".
+
+    Raises:
+        ValueError: If voice is not a valid ElevenLabs voice.
+    """
+    selected_voice = voice or "rachel"
+    if selected_voice not in ELEVENLABS_VOICE_IDS:
+        valid_voices = list(ELEVENLABS_VOICE_IDS.keys())
+        raise ValueError(
+            f"Invalid ElevenLabs voice: {selected_voice}. "
+            f"Must be one of: {', '.join(valid_voices)}"
+        )
+
+    voice_id = ELEVENLABS_VOICE_IDS[selected_voice]
     client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
 
     # Generate audio using ElevenLabs
     audio_generator = client.text_to_speech.convert(
-        voice_id=DEFAULT_ELEVENLABS_VOICE_ID,
+        voice_id=voice_id,
         text=text,
         model_id=DEFAULT_ELEVENLABS_MODEL,
         output_format="pcm_22050",  # 22050 Hz, 16-bit PCM

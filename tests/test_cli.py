@@ -72,6 +72,7 @@ def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
         backend="none",
         dialogue_backend="openai",
         tts_backend="openai",
+        voice=None,
         record=False,
         output_dir=None,
     )
@@ -94,6 +95,7 @@ def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
         backend="auto",
         dialogue_backend="openai",
         tts_backend="openai",
+        voice=None,
         record=False,
         output_dir=None,
     )
@@ -132,6 +134,7 @@ def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None
         backend="auto",
         dialogue_backend="claude",
         tts_backend="openai",
+        voice=None,
         record=False,
         output_dir=None,
     )
@@ -170,6 +173,7 @@ def test_cli_passes_tts_backend_to_run_conversation(tmp_path: Path) -> None:
         backend="auto",
         dialogue_backend="openai",
         tts_backend="elevenlabs",
+        voice=None,
         record=False,
         output_dir=None,
     )
@@ -254,3 +258,92 @@ def test_cli_default_output_dir_is_none(tmp_path: Path) -> None:
     mock_run.assert_called_once()
     _, kwargs = mock_run.call_args
     assert kwargs.get("output_dir") is None
+
+
+def test_cli_passes_voice_to_run_conversation(tmp_path: Path) -> None:
+    """Verify --voice is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--voice", "echo"]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once_with(
+        face_path,
+        text_mode=False,
+        backend="auto",
+        dialogue_backend="openai",
+        tts_backend="openai",
+        voice="echo",
+        record=False,
+        output_dir=None,
+    )
+
+
+def test_cli_default_voice_is_none(tmp_path: Path) -> None:
+    """Verify default voice is None."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("voice") is None
+
+
+def test_cli_list_voices_openai(capsys: pytest.CaptureFixture[str]) -> None:
+    """Verify --list-voices shows OpenAI voices."""
+    with (
+        patch("sys.argv", ["fai", "--list-voices"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "Available voices for openai TTS" in captured.out
+    assert "alloy" in captured.out
+    assert "echo" in captured.out
+
+
+def test_cli_list_voices_elevenlabs(capsys: pytest.CaptureFixture[str]) -> None:
+    """Verify --list-voices with --tts elevenlabs shows ElevenLabs voices."""
+    with (
+        patch("sys.argv", ["fai", "--list-voices", "--tts", "elevenlabs"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "Available voices for elevenlabs TTS" in captured.out
+    assert "rachel" in captured.out
+    assert "adam" in captured.out
+
+
+def test_cli_voice_with_tts_backend(tmp_path: Path) -> None:
+    """Verify --voice works with --tts backend."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--tts", "elevenlabs", "--voice", "josh"],
+        ),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("tts_backend") == "elevenlabs"
+    assert kwargs.get("voice") == "josh"

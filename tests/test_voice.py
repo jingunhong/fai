@@ -8,7 +8,15 @@ import numpy as np
 import pytest
 
 from fai.types import AudioData
-from fai.voice import TTSBackend, play_audio, stop_audio, synthesize
+from fai.voice import (
+    ElevenLabsVoice,
+    OpenAIVoice,
+    TTSBackend,
+    get_available_voices,
+    play_audio,
+    stop_audio,
+    synthesize,
+)
 
 
 def _create_mock_wav_bytes(
@@ -277,6 +285,168 @@ def test_tts_backend_type_alias() -> None:
     assert backend == "openai"
     backend = "elevenlabs"
     assert backend == "elevenlabs"
+
+
+# =============================================================================
+# Tests for voice selection
+# =============================================================================
+
+
+def test_get_available_voices_openai() -> None:
+    """Verify get_available_voices returns OpenAI voices."""
+    voices = get_available_voices("openai")
+    assert "alloy" in voices
+    assert "echo" in voices
+    assert "nova" in voices
+    assert "shimmer" in voices
+    assert len(voices) == 9  # OpenAI has 9 voices
+
+
+def test_get_available_voices_elevenlabs() -> None:
+    """Verify get_available_voices returns ElevenLabs voices."""
+    voices = get_available_voices("elevenlabs")
+    assert "rachel" in voices
+    assert "adam" in voices
+    assert "josh" in voices
+    assert len(voices) == 8  # ElevenLabs has 8 voices
+
+
+def test_get_available_voices_invalid_backend_raises() -> None:
+    """Verify get_available_voices raises ValueError for invalid backend."""
+    with pytest.raises(ValueError, match="Invalid backend"):
+        get_available_voices("invalid")  # type: ignore[arg-type]
+
+
+def test_synthesize_openai_with_voice(mock_openai_client: MagicMock) -> None:
+    """Verify synthesize passes voice to OpenAI API."""
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
+        synthesize("Test message", backend="openai", voice="echo")
+
+    mock_openai_client.audio.speech.create.assert_called_once_with(
+        model="tts-1",
+        voice="echo",
+        input="Test message",
+        response_format="wav",
+    )
+
+
+def test_synthesize_openai_with_all_voices(mock_openai_client: MagicMock) -> None:
+    """Verify all OpenAI voices are accepted."""
+    openai_voices = [
+        "alloy",
+        "ash",
+        "coral",
+        "echo",
+        "fable",
+        "onyx",
+        "nova",
+        "sage",
+        "shimmer",
+    ]
+
+    for voice in openai_voices:
+        mock_openai_client.audio.speech.create.reset_mock()
+        with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
+            synthesize("Test", backend="openai", voice=voice)
+
+        assert mock_openai_client.audio.speech.create.call_args[1]["voice"] == voice
+
+
+def test_synthesize_openai_invalid_voice_raises() -> None:
+    """Verify OpenAI backend raises ValueError for invalid voice."""
+    with pytest.raises(ValueError, match="Invalid OpenAI voice"):
+        synthesize("Test", backend="openai", voice="invalid_voice")
+
+
+def test_synthesize_openai_default_voice_is_alloy(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify OpenAI default voice is 'alloy'."""
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
+        synthesize("Test", backend="openai")
+
+    assert mock_openai_client.audio.speech.create.call_args[1]["voice"] == "alloy"
+
+
+def test_synthesize_elevenlabs_with_voice(mock_elevenlabs_client: MagicMock) -> None:
+    """Verify synthesize passes voice to ElevenLabs API."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        synthesize("Test message", backend="elevenlabs", voice="adam")
+
+    # Adam's voice ID
+    expected_voice_id = "pNInz6obpgDQGcFmaJgB"
+    mock_elevenlabs_client.text_to_speech.convert.assert_called_once_with(
+        voice_id=expected_voice_id,
+        text="Test message",
+        model_id="eleven_monolingual_v1",
+        output_format="pcm_22050",
+    )
+
+
+def test_synthesize_elevenlabs_with_all_voices(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify all ElevenLabs voices are accepted."""
+    elevenlabs_voices = [
+        "rachel",
+        "adam",
+        "antoni",
+        "bella",
+        "domi",
+        "elli",
+        "josh",
+        "arnold",
+    ]
+
+    for voice in elevenlabs_voices:
+        # Reset mock for fresh iterator each time
+        mock_elevenlabs_client.text_to_speech.convert.reset_mock()
+        mock_elevenlabs_client.text_to_speech.convert.return_value = iter(
+            [_create_mock_pcm_bytes(22050, 0.05)]
+        )
+        with patch(
+            "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client
+        ):
+            synthesize("Test", backend="elevenlabs", voice=voice)
+
+        mock_elevenlabs_client.text_to_speech.convert.assert_called_once()
+
+
+def test_synthesize_elevenlabs_invalid_voice_raises() -> None:
+    """Verify ElevenLabs backend raises ValueError for invalid voice."""
+    with pytest.raises(ValueError, match="Invalid ElevenLabs voice"):
+        synthesize("Test", backend="elevenlabs", voice="invalid_voice")
+
+
+def test_synthesize_elevenlabs_default_voice_is_rachel(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify ElevenLabs default voice is 'rachel'."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        synthesize("Test", backend="elevenlabs")
+
+    # Rachel's voice ID
+    expected_voice_id = "21m00Tcm4TlvDq8ikWAM"
+    assert (
+        mock_elevenlabs_client.text_to_speech.convert.call_args[1]["voice_id"]
+        == expected_voice_id
+    )
+
+
+def test_openai_voice_type_alias() -> None:
+    """Verify OpenAIVoice type alias is exported correctly."""
+    voice: OpenAIVoice = "alloy"
+    assert voice == "alloy"
+    voice = "shimmer"
+    assert voice == "shimmer"
+
+
+def test_elevenlabs_voice_type_alias() -> None:
+    """Verify ElevenLabsVoice type alias is exported correctly."""
+    voice: ElevenLabsVoice = "rachel"
+    assert voice == "rachel"
+    voice = "josh"
+    assert voice == "josh"
 
 
 # =============================================================================

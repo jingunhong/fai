@@ -23,6 +23,7 @@ def run_conversation(
     backend: BackendType = "auto",
     dialogue_backend: DialogueBackend = "openai",
     tts_backend: TTSBackend = "openai",
+    voice: str | None = None,
     record: bool = False,
     output_dir: Path | None = None,
 ) -> None:
@@ -41,6 +42,8 @@ def run_conversation(
         backend: Lip-sync backend to use for animation.
         dialogue_backend: LLM backend to use for response generation.
         tts_backend: TTS backend to use for speech synthesis.
+        voice: Voice to use for TTS. Defaults to "alloy" for OpenAI or "rachel"
+               for ElevenLabs.
         record: If True, save session audio/video to files.
         output_dir: Directory for recordings (default: ./recordings).
 
@@ -82,7 +85,7 @@ def run_conversation(
             history.append({"role": "assistant", "content": response.text})
 
             # Step 3: Synthesize speech
-            audio = synthesize(response.text, backend=tts_backend)
+            audio = synthesize(response.text, backend=tts_backend, voice=voice)
 
             # Step 4: Play audio (non-blocking so animation can start)
             play_audio(audio, blocking=False)
@@ -115,6 +118,7 @@ def run_conversation(
                 "backend": backend,
                 "dialogue_backend": dialogue_backend,
                 "tts_backend": tts_backend,
+                "voice": voice,
             }
             metadata_path = recorder.finalize(metadata)
             print(f"Session saved to: {metadata_path}")
