@@ -11,8 +11,11 @@ from dotenv import load_dotenv
 from elevenlabs import ElevenLabs
 from openai import OpenAI
 
+from fai.logging import get_logger
 from fai.retry import retry_with_backoff
 from fai.types import AudioChunk, AudioData
+
+logger = get_logger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -99,6 +102,8 @@ def synthesize(
     if not text.strip():
         raise ValueError("text cannot be empty")
 
+    logger.debug("Synthesizing speech using %s backend", backend)
+
     if backend == "elevenlabs":
         return _synthesize_with_elevenlabs(text, voice)
     elif backend == "openai":
@@ -127,6 +132,7 @@ def _synthesize_with_openai(text: str, voice: str | None = None) -> AudioData:
             f"Must be one of: {', '.join(valid_voices)}"
         )
 
+    logger.debug("Calling OpenAI TTS API with voice '%s'", selected_voice)
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     response = client.audio.speech.create(
@@ -162,6 +168,7 @@ def _synthesize_with_elevenlabs(text: str, voice: str | None = None) -> AudioDat
         )
 
     voice_id = ELEVENLABS_VOICE_IDS[selected_voice]
+    logger.debug("Calling ElevenLabs TTS API with voice '%s'", selected_voice)
     client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
 
     # Generate audio using ElevenLabs

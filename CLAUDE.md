@@ -18,6 +18,7 @@ fai/
 ├── __init__.py
 ├── __main__.py          # entry point: python -m fai
 ├── cli.py               # argument parsing (argparse)
+├── logging.py           # structured logging configuration
 ├── types.py             # shared data types (AudioData, VideoFrame, etc.)
 ├── perception/          # audio capture + ASR (speech-to-text)
 │   ├── __init__.py      # re-exports public API
@@ -62,6 +63,7 @@ uv run fai --list-voices                 # show available voices for default TTS
 uv run fai --list-voices --tts elevenlabs  # show ElevenLabs voices
 uv run fai --list-backends               # show available backends
 uv run fai face.jpg --stream             # streaming mode for low-latency response
+uv run fai face.jpg --log-level debug    # enable debug logging
 ```
 
 - First positional argument: path to reference face image (required)
@@ -75,6 +77,7 @@ uv run fai face.jpg --stream             # streaming mode for low-latency respon
 - `--list-backends`: list available backends and exit
 - `--list-voices`: list available voices for selected TTS backend and exit
 - `--stream`: enable streaming mode for low-latency response (no lip-sync, no recording)
+- `--log-level`: set logging level (debug, info, warning, error, critical; default: warning)
 
 ## Architecture
 
@@ -222,7 +225,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] Render component (OpenCV window display with frame timing)
 - [x] Orchestrator (main conversation loop)
 - [x] CLI interface (`python -m fai` with argparse)
-- [x] Comprehensive test suite (268 tests, all passing)
+- [x] Comprehensive test suite (301 tests, all passing)
 
 ### TODO (Priority Order)
 
@@ -240,7 +243,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 #### Code Quality
 
 - [x] `P9` Replace assertions: Convert 5 `assert` statements to explicit exception handling (render/display.py, motion/wav2lip.py, motion/sadtalker.py)
-- [ ] `P10` Structured logging: Add logging module with configurable log levels for debugging
+- [x] `P10` Structured logging: Add logging module with configurable log levels for debugging
 - [ ] `P11` API key validation: Validate required API keys at startup with clear error messages
 
 #### Features

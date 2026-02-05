@@ -347,3 +347,134 @@ def test_cli_voice_with_tts_backend(tmp_path: Path) -> None:
     _, kwargs = mock_run.call_args
     assert kwargs.get("tts_backend") == "elevenlabs"
     assert kwargs.get("voice") == "josh"
+
+
+def test_cli_log_level_default_is_warning(tmp_path: Path) -> None:
+    """Verify default log level is 'warning'."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="warning")
+
+
+def test_cli_log_level_debug(tmp_path: Path) -> None:
+    """Verify --log-level debug is passed to setup_logging."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--log-level", "debug"]),
+        patch("fai.cli.run_conversation"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="debug")
+
+
+def test_cli_log_level_info(tmp_path: Path) -> None:
+    """Verify --log-level info is passed to setup_logging."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--log-level", "info"]),
+        patch("fai.cli.run_conversation"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="info")
+
+
+def test_cli_log_level_error(tmp_path: Path) -> None:
+    """Verify --log-level error is passed to setup_logging."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--log-level", "error"]),
+        patch("fai.cli.run_conversation"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="error")
+
+
+def test_cli_log_level_critical(tmp_path: Path) -> None:
+    """Verify --log-level critical is passed to setup_logging."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--log-level", "critical"]),
+        patch("fai.cli.run_conversation"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="critical")
+
+
+def test_cli_log_level_invalid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Verify invalid --log-level value is rejected by argparse."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--log-level", "invalid"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "invalid choice" in captured.err
+
+
+def test_cli_log_level_called_before_other_operations(tmp_path: Path) -> None:
+    """Verify setup_logging is called before run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    call_order: list[str] = []
+
+    def mock_setup_logging(level: str) -> None:
+        call_order.append("setup_logging")
+
+    def mock_run_conversation(*args: object, **kwargs: object) -> None:
+        call_order.append("run_conversation")
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.setup_logging", side_effect=mock_setup_logging),
+        patch("fai.cli.run_conversation", side_effect=mock_run_conversation),
+    ):
+        cli.main()
+
+    assert call_order == ["setup_logging", "run_conversation"]
+
+
+def test_cli_log_level_with_stream_mode(tmp_path: Path) -> None:
+    """Verify --log-level works with --stream mode."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--stream", "--log-level", "debug"]),
+        patch("fai.cli.run_conversation_stream"),
+        patch("fai.cli.setup_logging") as mock_setup,
+    ):
+        cli.main()
+
+    mock_setup.assert_called_once_with(level="debug")

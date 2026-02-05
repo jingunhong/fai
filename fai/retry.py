@@ -1,6 +1,5 @@
 """Retry logic with exponential backoff for API calls."""
 
-import logging
 import random
 import time
 from collections.abc import Callable
@@ -26,7 +25,9 @@ from openai import (
     RateLimitError,
 )
 
-logger = logging.getLogger(__name__)
+from fai.logging import get_logger
+
+logger = get_logger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")

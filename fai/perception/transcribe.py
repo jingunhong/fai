@@ -8,8 +8,11 @@ import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from fai.logging import get_logger
 from fai.retry import retry_with_backoff
 from fai.types import AudioData, TranscriptResult
+
+logger = get_logger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,6 +35,11 @@ def transcribe(audio: AudioData) -> TranscriptResult:
     if len(audio.samples) == 0:
         raise ValueError("audio samples cannot be empty")
 
+    logger.debug(
+        "Transcribing audio: %d samples at %d Hz",
+        len(audio.samples),
+        audio.sample_rate,
+    )
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     # Convert AudioData to WAV bytes for API

@@ -5,6 +5,7 @@ import contextlib
 import sys
 from pathlib import Path
 
+from fai.logging import LOG_LEVEL_MAP, setup_logging
 from fai.motion import get_available_backends
 from fai.orchestrator import run_conversation, run_conversation_stream
 from fai.voice import get_available_voices
@@ -81,8 +82,18 @@ def main() -> None:
         action="store_true",
         help="Use streaming mode for low-latency response (no lip-sync, no recording)",
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=list(LOG_LEVEL_MAP.keys()),
+        default="warning",
+        help="Set logging level: debug, info, warning (default), error, critical",
+    )
 
     args = parser.parse_args()
+
+    # Configure logging early, before any other operations
+    setup_logging(level=args.log_level)
 
     # Handle --list-backends
     if args.list_backends:

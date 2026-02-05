@@ -14,8 +14,11 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
 )
 
+from fai.logging import get_logger
 from fai.retry import retry_with_backoff
 from fai.types import DialogueResponse, TextChunk
+
+logger = get_logger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,6 +62,8 @@ def generate_response(
     if not user_text.strip():
         raise ValueError("user_text cannot be empty")
 
+    logger.debug("Generating response using %s backend", backend)
+
     if backend == "claude":
         return _generate_with_claude(user_text, history)
     elif backend == "openai":
@@ -71,6 +76,7 @@ def _generate_with_openai(
     user_text: str, history: list[dict[str, str]]
 ) -> DialogueResponse:
     """Generate response using OpenAI GPT-4o."""
+    logger.debug("Calling OpenAI API with %d history messages", len(history))
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     messages: list[ChatCompletionMessageParam] = [
@@ -99,6 +105,7 @@ def _generate_with_claude(
     user_text: str, history: list[dict[str, str]]
 ) -> DialogueResponse:
     """Generate response using Anthropic Claude."""
+    logger.debug("Calling Claude API with %d history messages", len(history))
     client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     messages: list[MessageParam] = []

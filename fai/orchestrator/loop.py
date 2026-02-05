@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from fai.dialogue import DialogueBackend, generate_response, generate_response_stream
+from fai.logging import get_logger
 from fai.motion import animate, animate_stream
 from fai.perception import record_audio, transcribe
 from fai.recording import SessionRecorder
@@ -16,6 +17,8 @@ from fai.voice import (
     synthesize,
     synthesize_stream,
 )
+
+logger = get_logger(__name__)
 
 DEFAULT_RECORD_DURATION = 5.0  # seconds
 
@@ -60,6 +63,14 @@ def run_conversation(
     if not face_image.exists():
         raise FileNotFoundError(f"Face image not found: {face_image}")
 
+    logger.info(
+        "Starting conversation with face_image=%s, backend=%s, dialogue=%s, tts=%s",
+        face_image,
+        backend,
+        dialogue_backend,
+        tts_backend,
+    )
+
     history: list[dict[str, str]] = []
 
     # Initialize session recorder if recording is enabled
@@ -68,6 +79,7 @@ def run_conversation(
         recordings_dir = output_dir or Path("./recordings")
         recorder = SessionRecorder(recordings_dir)
         recorder.start()
+        logger.info("Recording session to: %s", recorder.session_dir)
         print(f"Recording session to: {recorder.session_dir}")
 
     print("Starting fai conversation...")
@@ -78,12 +90,24 @@ def run_conversation(
             # Step 1: Get user input
             user_text, user_audio = _get_user_input(text_mode)
             if not user_text:
+                logger.debug("Empty user input, skipping turn")
                 continue
 
+            logger.debug(
+                "User input: %s",
+                user_text[:50] + "..." if len(user_text) > 50 else user_text,
+            )
             print(f"You: {user_text}")
 
             # Step 2: Generate LLM response
+            logger.debug("Generating LLM response")
             response = generate_response(user_text, history, backend=dialogue_backend)
+            logger.debug(
+                "LLM response: %s",
+                response.text[:50] + "..."
+                if len(response.text) > 50
+                else response.text,
+            )
             print(f"AI: {response.text}\n")
 
             # Update conversation history
@@ -91,12 +115,16 @@ def run_conversation(
             history.append({"role": "assistant", "content": response.text})
 
             # Step 3: Synthesize speech
+            logger.debug("Synthesizing speech")
             audio = synthesize(response.text, backend=tts_backend, voice=voice)
+            logger.debug("Synthesized %d audio samples", len(audio.samples))
 
             # Step 4: Play audio (non-blocking so animation can start)
+            logger.debug("Playing audio")
             play_audio(audio, blocking=False)
 
             # Step 5: Animate face
+            logger.debug("Animating face")
             frames = animate(face_image, audio, backend=backend)
 
             # Step 6: If recording, collect frames for both display and recording
@@ -115,6 +143,7 @@ def run_conversation(
             display(frames)
 
     except KeyboardInterrupt:
+        logger.info("Conversation ended by user")
         print("\nGoodbye!")
     finally:
         # Finalize recording if enabled
@@ -127,6 +156,7 @@ def run_conversation(
                 "voice": voice,
             }
             metadata_path = recorder.finalize(metadata)
+            logger.info("Session saved to: %s", metadata_path)
             print(f"Session saved to: {metadata_path}")
 
 
@@ -181,6 +211,13 @@ def run_conversation_stream(
     if not face_image.exists():
         raise FileNotFoundError(f"Face image not found: {face_image}")
 
+    logger.info(
+        "Starting streaming conversation with face_image=%s, dialogue=%s, tts=%s",
+        face_image,
+        dialogue_backend,
+        tts_backend,
+    )
+
     history: list[dict[str, str]] = []
 
     print("Starting fai conversation (streaming mode)...")
@@ -192,23 +229,32 @@ def run_conversation_stream(
             # Step 1: Get user input
             user_text, _ = _get_user_input(text_mode)
             if not user_text:
+                logger.debug("Empty user input, skipping turn")
                 continue
 
+            logger.debug(
+                "User input: %s",
+                user_text[:50] + "..." if len(user_text) > 50 else user_text,
+            )
             print(f"You: {user_text}")
 
             # Step 2: Stream LLM response and collect full text
+            logger.debug("Streaming LLM response")
             response_text = _stream_dialogue_response(
                 user_text, history, dialogue_backend
             )
+            logger.debug("Streaming response complete")
 
             # Update conversation history
             history.append({"role": "user", "content": user_text})
             history.append({"role": "assistant", "content": response_text})
 
             # Step 3: Stream TTS and animation
+            logger.debug("Streaming TTS and animation")
             _stream_tts_and_animate(face_image, response_text, tts_backend, voice)
 
     except KeyboardInterrupt:
+        logger.info("Streaming conversation ended by user")
         print("\nGoodbye!")
 
 
