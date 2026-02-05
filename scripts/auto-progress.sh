@@ -125,15 +125,21 @@ while true; do
 
 Instructions:
 1. Implement the feature/fix as described
-2. Write tests for the new functionality (mock external APIs)
-3. Run \`uv run pytest\` to ensure all tests pass
-4. Run \`uv run pre-commit run --all-files\` to ensure code quality
-5. After implementation is complete and tests pass, update CLAUDE.md:
+2. Write tests for ALL new functionality:
+   - Cover happy path and edge cases
+   - Mock external APIs (OpenAI, etc.) - never hit real APIs
+   - Use pytest fixtures for shared setup
+   - Follow test naming: test_<function>_<scenario>
+3. Run \`uv run pytest\` - this checks both tests AND coverage (must be ≥80%)
+4. If coverage dropped, add more tests until it's back above 80%
+5. Run \`uv run pre-commit run --all-files\` to ensure code quality
+6. After implementation is complete and all checks pass, update CLAUDE.md:
    - Change the line \`- [ ] \`$PRIORITY\` $TASK_NAME:\` to \`- [x] \`$PRIORITY\` $TASK_NAME:\`
-6. Commit all changes with a descriptive message
-7. Push to remote
+7. Commit all changes with a descriptive message
+8. Push to remote
 
-Important: Follow the coding conventions in CLAUDE.md. Keep it simple and focused."
+Important: Follow the coding conventions in CLAUDE.md. Keep it simple and focused.
+Every new function MUST have corresponding tests."
 
     # Run Claude Code for implementation
     echo "Starting Claude Code for implementation..."

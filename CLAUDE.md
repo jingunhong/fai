@@ -81,8 +81,8 @@ Each component exposes a simple function interface. The orchestrator calls them 
 
 ## Testing
 
-- Framework: pytest
-- Run: `uv run pytest`
+- Framework: pytest + pytest-cov
+- Run: `uv run pytest` (coverage is enabled by default)
 - **Use functions, not test classes**
 - **Use fixtures** (`@pytest.fixture`) for shared setup (e.g., sample audio, reference image)
 - Place tests in `tests/` mirroring the component structure:
@@ -98,14 +98,53 @@ Each component exposes a simple function interface. The orchestrator calls them 
   ```
 - Mock external API calls (OpenAI, ElevenLabs) — never hit real APIs in tests
 
+### Test Requirements
+
+**Every code change MUST include corresponding tests:**
+
+1. **New functions/features**: Write tests covering happy path + edge cases
+2. **Bug fixes**: Add a test that reproduces the bug (fails before fix, passes after)
+3. **Refactoring**: Ensure existing tests still pass; add tests if coverage drops
+
+### Code Coverage
+
+- **Minimum coverage: 80%** (enforced by pytest-cov, will fail CI if below)
+- **Target coverage: 90%+** (current: ~94%)
+- Coverage report is shown after each test run
+- Check coverage for specific files: `uv run pytest --cov=fai/module --cov-report=term-missing`
+
+### Writing Good Tests
+
+```python
+# Good: Test function with descriptive name
+def test_synthesize_empty_text_raises_value_error():
+    """Verify synthesize raises ValueError for empty text."""
+    with pytest.raises(ValueError, match="text cannot be empty"):
+        synthesize("")
+
+# Good: Use fixtures for shared setup
+@pytest.fixture
+def sample_audio() -> AudioData:
+    """Create sample audio data for testing."""
+    return AudioData(samples=np.zeros(16000, dtype=np.float32), sample_rate=16000)
+
+# Good: Mock external APIs
+def test_transcribe_calls_whisper_api(mock_openai_client, sample_audio):
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
+        transcribe(sample_audio)
+    mock_openai_client.audio.transcriptions.create.assert_called_once()
+```
+
 ## Validation
 
 Always run before committing:
 
 ```bash
-uv run pytest
-uv run pre-commit run --all-files
+uv run pytest                           # runs tests + coverage check (must be ≥80%)
+uv run pre-commit run --all-files       # linting, formatting, type checking
 ```
+
+If coverage drops below 80%, the test run will fail. Add tests to bring it back up.
 
 ## Dependencies (MVP)
 
