@@ -40,14 +40,14 @@ log ""
 # Function to get the first unchecked TODO item
 get_next_todo() {
     # Find first line matching "- [ ] `P" pattern and extract priority and description
-    grep -n '^\- \[ \] `P[0-9]`' "$CLAUDE_MD" | head -1
+    grep -n '^\- \[ \] `P[0-9]\+`' "$CLAUDE_MD" | head -1
 }
 
 # Function to extract task description from TODO line
 parse_todo() {
     local line="$1"
     # Extract: line_number, priority, task_name, description
-    echo "$line" | sed -E 's/^([0-9]+):\- \[ \] `(P[0-9])` ([^:]+): (.+)$/\1|\2|\3|\4/'
+    echo "$line" | sed -E 's/^([0-9]+):\- \[ \] `(P[0-9]+)` ([^:]+): (.+)$/\1|\2|\3|\4/'
 }
 
 # Function to run review and refactor
