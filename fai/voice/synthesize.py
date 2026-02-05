@@ -312,16 +312,12 @@ def _synthesize_stream_with_elevenlabs(
 
     sample_rate = 22050
 
-    # Track if we've yielded at least one chunk
-    chunks_yielded = 0
-
     for chunk_bytes in audio_generator:
         if len(chunk_bytes) > 0:
             # Convert PCM bytes to numpy array (16-bit signed)
             samples = np.frombuffer(chunk_bytes, dtype=np.int16).astype(np.float32)
             samples = samples / 32768.0  # Normalize to [-1, 1]
             yield AudioChunk(samples=samples, sample_rate=sample_rate, is_final=False)
-            chunks_yielded += 1
 
     # Yield final empty chunk to signal completion
     yield AudioChunk(
