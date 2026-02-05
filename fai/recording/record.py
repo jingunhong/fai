@@ -231,7 +231,7 @@ def load_audio_wav(path: Path) -> AudioData:
 
         # Convert int16 to float32 [-1, 1]
         samples_int16 = np.frombuffer(raw_data, dtype=np.int16)
-        samples_float32 = samples_int16.astype(np.float32) / 32767.0
+        samples_float32 = samples_int16.astype(np.float32) / 32768.0
 
     return AudioData(samples=samples_float32, sample_rate=sample_rate)
 

@@ -129,9 +129,9 @@ def test_save_load_roundtrip_preserves_values(
 
     loaded = load_audio_wav(output_path)
 
-    # Allow for int16 quantization error
+    # Allow for int16 quantization error (encode * 32767, decode / 32768)
     np.testing.assert_allclose(
-        loaded.samples, sample_audio.samples, rtol=0, atol=1 / 32767
+        loaded.samples, sample_audio.samples, rtol=0, atol=1 / 32768 + 1 / 32767
     )
 
 
