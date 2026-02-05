@@ -30,9 +30,12 @@ fai/
 │   ├── __init__.py
 │   ├── playback.py      # audio playback via sounddevice
 │   └── synthesize.py    # OpenAI TTS synthesis
-├── motion/              # audio → facial animation
+├── motion/              # audio → facial animation (lip-sync support)
 │   ├── __init__.py
-│   └── animate.py       # frame generation (placeholder)
+│   ├── animate.py       # frame generation with backend selection
+│   ├── backend.py       # LipSyncBackend protocol and utilities
+│   ├── wav2lip.py       # Wav2Lip backend integration
+│   └── sadtalker.py     # SadTalker backend integration
 ├── render/              # OpenCV display
 │   ├── __init__.py
 │   └── display.py       # video frame display
@@ -44,12 +47,16 @@ fai/
 ## CLI Interface
 
 ```bash
-uv run fai face.jpg           # voice mode (default)
-uv run fai face.jpg --text    # text input mode (for debugging)
+uv run fai face.jpg                      # voice mode (default)
+uv run fai face.jpg --text               # text input mode (for debugging)
+uv run fai face.jpg --backend wav2lip    # use specific lip-sync backend
+uv run fai --list-backends               # show available backends
 ```
 
 - First positional argument: path to reference face image (required)
 - `--text`: use keyboard input instead of microphone
+- `--backend`: lip-sync backend (auto, wav2lip, sadtalker, none)
+- `--list-backends`: list available backends and exit
 
 ## Architecture
 
@@ -110,7 +117,7 @@ Each component exposes a simple function interface. The orchestrator calls them 
 ### Code Coverage
 
 - **Minimum coverage: 80%** (enforced by pytest-cov, will fail CI if below)
-- **Target coverage: 90%+** (current: ~94%)
+- **Target coverage: 90%+** (current: ~97%)
 - Coverage report is shown after each test run
 - Check coverage for specific files: `uv run pytest --cov=fai/module --cov-report=term-missing`
 
@@ -176,12 +183,12 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] Render component (OpenCV window display with frame timing)
 - [x] Orchestrator (main conversation loop)
 - [x] CLI interface (`python -m fai` with argparse)
-- [x] Comprehensive test suite (63 tests, all passing)
+- [x] Comprehensive test suite (109 tests, all passing)
 
 ### TODO (Priority Order)
 
 - [x] `P1` Audio playback: Play synthesized speech audio through speakers during response
-- [ ] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
+- [x] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
 - [ ] `P3` Error recovery: Add retry logic with exponential backoff for API failures
 - [ ] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
 - [ ] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend

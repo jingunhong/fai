@@ -6,7 +6,17 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from fai.motion import animate
+from fai.motion import animate, get_available_backends
+from fai.motion.animate import (
+    _animate_with_auto_backend,
+    _animate_with_specific_backend,
+    _apply_breathing_effect,
+    _generate_breathing_frames,
+)
+from fai.motion.backend import (
+    calculate_audio_duration_ms,
+    calculate_frame_count,
+)
 from fai.types import AudioData, VideoFrame
 
 
@@ -29,6 +39,74 @@ def mock_face_path(tmp_path: Path) -> Path:
     face_path = tmp_path / "face.jpg"
     face_path.touch()
     return face_path
+
+
+# === Backend utility tests ===
+
+
+def test_calculate_audio_duration_ms_basic(sample_audio: AudioData) -> None:
+    """Verify audio duration calculation for 1 second audio."""
+    duration = calculate_audio_duration_ms(sample_audio)
+    assert duration == 1000
+
+
+def test_calculate_audio_duration_ms_zero_sample_rate() -> None:
+    """Verify duration is 0 for zero sample rate."""
+    audio = AudioData(samples=np.zeros(1000, dtype=np.float32), sample_rate=0)
+    assert calculate_audio_duration_ms(audio) == 0
+
+
+def test_calculate_frame_count_basic() -> None:
+    """Verify frame count for 1 second at 30 FPS."""
+    assert calculate_frame_count(1000) == 30
+
+
+def test_calculate_frame_count_minimum() -> None:
+    """Verify minimum frame count is 1."""
+    assert calculate_frame_count(0) == 1
+    assert calculate_frame_count(10) == 1
+
+
+def test_calculate_frame_count_custom_fps() -> None:
+    """Verify frame count with custom FPS."""
+    assert calculate_frame_count(1000, fps=60) == 60
+
+
+# === Breathing animation tests ===
+
+
+def test_apply_breathing_effect_returns_same_shape(sample_image: np.ndarray) -> None:
+    """Verify breathing effect preserves image shape."""
+    result = _apply_breathing_effect(sample_image, 0)
+    assert result.shape == sample_image.shape
+
+
+def test_apply_breathing_effect_returns_uint8(sample_image: np.ndarray) -> None:
+    """Verify breathing effect returns uint8 dtype."""
+    result = _apply_breathing_effect(sample_image, 1000)
+    assert result.dtype == np.uint8
+
+
+def test_generate_breathing_frames_count(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify breathing frames generates correct number of frames."""
+    frames = list(_generate_breathing_frames(sample_image, sample_audio))
+    # 1 second at 30 FPS = 30 frames
+    assert len(frames) == 30
+
+
+def test_generate_breathing_frames_timestamps(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify breathing frames have sequential timestamps."""
+    frames = list(_generate_breathing_frames(sample_image, sample_audio))
+    timestamps = [f.timestamp_ms for f in frames]
+    for i in range(1, len(timestamps)):
+        assert timestamps[i] >= timestamps[i - 1]
+
+
+# === Main animate function tests ===
 
 
 def test_animate_yields_video_frames(
@@ -144,3 +222,91 @@ def test_animate_is_iterator(
     # Should be an iterator, not a list
     assert hasattr(result, "__iter__")
     assert hasattr(result, "__next__")
+
+
+# === Backend selection tests ===
+
+
+def test_animate_with_backend_none(
+    mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
+) -> None:
+    """Verify backend='none' uses breathing animation."""
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
+        frames = list(animate(mock_face_path, sample_audio, backend="none"))
+
+    assert len(frames) == 30  # 1 second at 30 FPS
+
+
+def test_animate_with_backend_auto_fallback(
+    mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
+) -> None:
+    """Verify backend='auto' falls back to breathing when no backends available."""
+    with (
+        patch("fai.motion.animate.cv2.imread", return_value=sample_image),
+        patch("fai.motion.animate.Wav2LipBackend.is_available", return_value=False),
+        patch("fai.motion.animate.SadTalkerBackend.is_available", return_value=False),
+    ):
+        frames = list(animate(mock_face_path, sample_audio, backend="auto"))
+
+    assert len(frames) == 30
+
+
+def test_animate_with_auto_backend_uses_wav2lip_when_available(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify auto backend prefers wav2lip when available."""
+    mock_frame = VideoFrame(image=sample_image, timestamp_ms=0)
+
+    with (
+        patch("fai.motion.animate.Wav2LipBackend.is_available", return_value=True),
+        patch(
+            "fai.motion.animate.Wav2LipBackend.generate_frames",
+            return_value=iter([mock_frame]),
+        ) as mock_gen,
+    ):
+        frames = list(_animate_with_auto_backend(sample_image, sample_audio))
+
+    mock_gen.assert_called_once()
+    assert len(frames) == 1
+
+
+def test_animate_with_specific_backend_raises_for_unknown(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify unknown backend name raises ValueError."""
+    with pytest.raises(ValueError, match="Unknown backend"):
+        list(_animate_with_specific_backend(sample_image, sample_audio, "unknown"))
+
+
+def test_animate_with_specific_backend_raises_when_unavailable(
+    sample_image: np.ndarray, sample_audio: AudioData
+) -> None:
+    """Verify unavailable backend raises RuntimeError."""
+    with (
+        patch("fai.motion.animate.Wav2LipBackend.is_available", return_value=False),
+        pytest.raises(RuntimeError, match="not available"),
+    ):
+        list(_animate_with_specific_backend(sample_image, sample_audio, "wav2lip"))
+
+
+def test_get_available_backends_none() -> None:
+    """Verify get_available_backends returns empty when none available."""
+    with (
+        patch("fai.motion.animate.Wav2LipBackend.is_available", return_value=False),
+        patch("fai.motion.animate.SadTalkerBackend.is_available", return_value=False),
+    ):
+        backends = get_available_backends()
+
+    assert backends == []
+
+
+def test_get_available_backends_all() -> None:
+    """Verify get_available_backends returns all when available."""
+    with (
+        patch("fai.motion.animate.Wav2LipBackend.is_available", return_value=True),
+        patch("fai.motion.animate.SadTalkerBackend.is_available", return_value=True),
+    ):
+        backends = get_available_backends()
+
+    assert "wav2lip" in backends
+    assert "sadtalker" in backends

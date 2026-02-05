@@ -1,6 +1,7 @@
 """Main conversation loop and component coordination."""
 
 from pathlib import Path
+from typing import Literal
 
 from fai.dialogue import generate_response
 from fai.motion import animate
@@ -10,20 +11,28 @@ from fai.voice import play_audio, synthesize
 
 DEFAULT_RECORD_DURATION = 5.0  # seconds
 
+# Backend type alias (matches motion.BackendType)
+BackendType = Literal["auto", "wav2lip", "sadtalker", "none"]
 
-def run_conversation(face_image: Path, text_mode: bool = False) -> None:
+
+def run_conversation(
+    face_image: Path,
+    text_mode: bool = False,
+    backend: BackendType = "auto",
+) -> None:
     """Run the main conversation loop.
 
     Coordinates all components in a turn-based conversation:
     1. Get user input (text or voice)
     2. Generate LLM response
     3. Synthesize speech from response
-    4. Animate face with audio
+    4. Animate face with audio (using specified lip-sync backend)
     5. Display animated video
 
     Args:
         face_image: Path to the reference face image.
         text_mode: If True, use keyboard input. If False, use microphone.
+        backend: Lip-sync backend to use for animation.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -61,7 +70,7 @@ def run_conversation(face_image: Path, text_mode: bool = False) -> None:
             play_audio(audio, blocking=False)
 
             # Step 5: Animate face
-            frames = animate(face_image, audio)
+            frames = animate(face_image, audio, backend=backend)
 
             # Step 6: Display animated video
             display(frames)
