@@ -42,6 +42,7 @@ def run_conversation(
     record: bool = False,
     output_dir: Path | None = None,
     model: DialogueModel | None = None,
+    whisper_model: str | None = None,
     timeout: float | None = None,
 ) -> None:
     """Run the main conversation loop.
@@ -64,6 +65,7 @@ def run_conversation(
         record: If True, save session audio/video to files.
         output_dir: Directory for recordings (default: ./recordings).
         model: Specific LLM model to use. If None, uses the default for the backend.
+        whisper_model: Whisper model for transcription. If None, uses "whisper-1".
         timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Raises:
@@ -98,7 +100,9 @@ def run_conversation(
     try:
         while True:
             # Step 1: Get user input
-            user_text, user_audio = _get_user_input(text_mode, timeout=timeout)
+            user_text, user_audio = _get_user_input(
+                text_mode, timeout=timeout, whisper_model=whisper_model
+            )
             if not user_text:
                 logger.debug("Empty user input, skipping turn")
                 continue
@@ -174,6 +178,7 @@ def run_conversation(
                 "tts_backend": tts_backend,
                 "voice": voice,
                 "model": model,
+                "whisper_model": whisper_model,
                 "timeout": timeout,
             }
             metadata_path = recorder.finalize(metadata)
@@ -182,13 +187,16 @@ def run_conversation(
 
 
 def _get_user_input(
-    text_mode: bool, timeout: float | None = None
+    text_mode: bool,
+    timeout: float | None = None,
+    whisper_model: str | None = None,
 ) -> tuple[str, AudioData | None]:
     """Get user input from keyboard or microphone.
 
     Args:
         text_mode: If True, read from keyboard. If False, record from microphone.
         timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
+        whisper_model: Whisper model for transcription. If None, uses "whisper-1".
 
     Returns:
         Tuple of (user text, optional AudioData for voice mode).
@@ -201,7 +209,7 @@ def _get_user_input(
     else:
         print(f"Listening for {DEFAULT_RECORD_DURATION} seconds...")
         audio = record_audio(DEFAULT_RECORD_DURATION)
-        result = transcribe(audio, timeout=timeout)
+        result = transcribe(audio, timeout=timeout, whisper_model=whisper_model)
         return result.text.strip(), audio
 
 
@@ -212,6 +220,7 @@ def run_conversation_stream(
     tts_backend: TTSBackend = "openai",
     voice: str | None = None,
     model: DialogueModel | None = None,
+    whisper_model: str | None = None,
     timeout: float | None = None,
 ) -> None:
     """Run the streaming conversation loop with low-latency response.
@@ -230,6 +239,7 @@ def run_conversation_stream(
         tts_backend: TTS backend to use for speech synthesis.
         voice: Voice to use for TTS.
         model: Specific LLM model to use. If None, uses the default for the backend.
+        whisper_model: Whisper model for transcription. If None, uses "whisper-1".
         timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Raises:
@@ -255,7 +265,9 @@ def run_conversation_stream(
     try:
         while True:
             # Step 1: Get user input
-            user_text, _ = _get_user_input(text_mode, timeout=timeout)
+            user_text, _ = _get_user_input(
+                text_mode, timeout=timeout, whisper_model=whisper_model
+            )
             if not user_text:
                 logger.debug("Empty user input, skipping turn")
                 continue

@@ -91,6 +91,7 @@ def test_cli_passes_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        whisper_model=None,
         timeout=None,
     )
 
@@ -119,6 +120,7 @@ def test_cli_passes_text_mode_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        whisper_model=None,
         timeout=None,
     )
 
@@ -166,6 +168,7 @@ def test_cli_passes_dialogue_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        whisper_model=None,
         timeout=None,
     )
 
@@ -213,6 +216,7 @@ def test_cli_passes_tts_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        whisper_model=None,
         timeout=None,
     )
 
@@ -337,6 +341,7 @@ def test_cli_passes_voice_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        whisper_model=None,
         timeout=None,
     )
 
@@ -681,6 +686,7 @@ def test_cli_passes_model_to_run_conversation(
         record=False,
         output_dir=None,
         model="gpt-4o-mini",
+        whisper_model=None,
         timeout=None,
     )
 
@@ -736,6 +742,7 @@ def test_cli_passes_model_to_run_conversation_stream(
         tts_backend="openai",
         voice=None,
         model="claude-haiku",
+        whisper_model=None,
         timeout=None,
     )
 
@@ -1085,3 +1092,69 @@ def test_cli_playback_handles_keyboard_interrupt(tmp_path: Path) -> None:
         cli.main()
 
     assert exc_info.value.code == 0
+
+
+# Tests for --whisper-model flag
+
+
+def test_cli_passes_whisper_model_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --whisper-model is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--whisper-model", "whisper-large-v3"],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("whisper_model") == "whisper-large-v3"
+
+
+def test_cli_default_whisper_model_is_none(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify default whisper_model is None."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("whisper_model") is None
+
+
+def test_cli_passes_whisper_model_to_run_conversation_stream(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --whisper-model is passed to run_conversation_stream."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--stream", "--whisper-model", "whisper-large-v3"],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation_stream") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("whisper_model") == "whisper-large-v3"

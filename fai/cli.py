@@ -100,6 +100,12 @@ def main() -> None:
         help="Replay a recorded session from the given session directory",
     )
     parser.add_argument(
+        "--whisper-model",
+        type=str,
+        default=None,
+        help="Whisper model for transcription (default: whisper-1)",
+    )
+    parser.add_argument(
         "--timeout",
         type=float,
         default=None,
@@ -214,6 +220,7 @@ def main() -> None:
                 tts_backend=args.tts,
                 voice=args.voice,
                 model=args.model,
+                whisper_model=args.whisper_model,
                 timeout=args.timeout,
             )
         else:
@@ -227,5 +234,6 @@ def main() -> None:
                 record=args.record,
                 output_dir=args.output_dir,
                 model=args.model,
+                whisper_model=args.whisper_model,
                 timeout=args.timeout,
             )

@@ -65,6 +65,7 @@ uv run fai --list-voices --tts elevenlabs  # show ElevenLabs voices
 uv run fai --list-backends               # show available backends
 uv run fai face.jpg --stream             # streaming mode for low-latency response
 uv run fai --playback ./recordings/session_2026-02-05_143022  # replay a recorded session
+uv run fai face.jpg --whisper-model whisper-large-v3  # use specific Whisper model
 uv run fai face.jpg --timeout 30         # set API call timeout to 30 seconds
 uv run fai face.jpg --log-level debug    # enable debug logging
 ```
@@ -82,6 +83,7 @@ uv run fai face.jpg --log-level debug    # enable debug logging
 - `--list-voices`: list available voices for selected TTS backend and exit
 - `--stream`: enable streaming mode for low-latency response (no lip-sync, no recording)
 - `--playback`: replay a recorded session from a session directory path
+- `--whisper-model`: Whisper model for transcription (default: whisper-1)
 - `--timeout`: timeout in seconds for API calls (default: no custom timeout, uses SDK defaults)
 - `--log-level`: set logging level (debug, info, warning, error, critical; default: warning)
 
@@ -258,7 +260,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P13` Conversation trimming: Limit conversation history length for long sessions (token counting + oldest message removal)
 - [x] `P14` Request timeouts: Add configurable timeout for API calls via `--timeout` flag
 - [x] `P15` Session playback: Add `--playback` mode to replay recorded sessions from JSON metadata
-- [ ] `P16` Whisper model selection: Add `--whisper-model` flag for local/API Whisper model choice
+- [x] `P16` Whisper model selection: Add `--whisper-model` flag for local/API Whisper model choice
 - [ ] `P17` Emotion detection: Detect user emotion from voice/text and adjust AI response tone
 
 #### Infrastructure

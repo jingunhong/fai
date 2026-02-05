@@ -18,13 +18,21 @@ logger = get_logger(__name__)
 load_dotenv()
 
 
+DEFAULT_WHISPER_MODEL = "whisper-1"
+
+
 @retry_with_backoff()
-def transcribe(audio: AudioData, timeout: float | None = None) -> TranscriptResult:
+def transcribe(
+    audio: AudioData,
+    timeout: float | None = None,
+    whisper_model: str | None = None,
+) -> TranscriptResult:
     """Transcribe audio to text using OpenAI Whisper API.
 
     Args:
         audio: AudioData containing samples and sample rate.
         timeout: Timeout in seconds for the API call. If None, uses SDK default.
+        whisper_model: Whisper model to use. If None, uses "whisper-1".
 
     Returns:
         TranscriptResult containing the transcribed text.
@@ -36,10 +44,13 @@ def transcribe(audio: AudioData, timeout: float | None = None) -> TranscriptResu
     if len(audio.samples) == 0:
         raise ValueError("audio samples cannot be empty")
 
+    model = whisper_model or DEFAULT_WHISPER_MODEL
+
     logger.debug(
-        "Transcribing audio: %d samples at %d Hz",
+        "Transcribing audio: %d samples at %d Hz (model=%s)",
         len(audio.samples),
         audio.sample_rate,
+        model,
     )
     client = OpenAI(
         api_key=os.environ.get("OPENAI_API_KEY"),
@@ -54,7 +65,7 @@ def transcribe(audio: AudioData, timeout: float | None = None) -> TranscriptResu
     wav_file.name = "audio.wav"
 
     response = client.audio.transcriptions.create(
-        model="whisper-1",
+        model=model,
         file=wav_file,
     )
 

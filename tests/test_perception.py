@@ -223,3 +223,57 @@ def test_transcribe_default_timeout_is_none(
     mock_cls.assert_called_once()
     call_kwargs = mock_cls.call_args[1]
     assert "timeout" not in call_kwargs
+
+
+# Tests for whisper_model parameter
+
+
+def test_transcribe_uses_default_whisper_model(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe uses whisper-1 by default."""
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
+        transcribe(sample_audio)
+
+    call_args = mock_openai_client.audio.transcriptions.create.call_args
+    assert call_args.kwargs["model"] == "whisper-1"
+
+
+def test_transcribe_uses_custom_whisper_model(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe uses the specified whisper model."""
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
+        transcribe(sample_audio, whisper_model="whisper-large-v3")
+
+    call_args = mock_openai_client.audio.transcriptions.create.call_args
+    assert call_args.kwargs["model"] == "whisper-large-v3"
+
+
+def test_transcribe_whisper_model_none_uses_default(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe with whisper_model=None uses whisper-1."""
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
+        transcribe(sample_audio, whisper_model=None)
+
+    call_args = mock_openai_client.audio.transcriptions.create.call_args
+    assert call_args.kwargs["model"] == "whisper-1"
+
+
+def test_transcribe_whisper_model_with_timeout(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe passes both whisper_model and timeout."""
+    with patch(
+        "fai.perception.transcribe.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        transcribe(sample_audio, timeout=30.0, whisper_model="whisper-large-v3")
+
+    # Verify timeout was passed to client
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+    # Verify whisper model was used
+    call_args = mock_openai_client.audio.transcriptions.create.call_args
+    assert call_args.kwargs["model"] == "whisper-large-v3"

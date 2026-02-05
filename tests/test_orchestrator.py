@@ -738,3 +738,79 @@ def test_run_conversation_passes_timeout_to_transcribe(
     assert mock_transcribe.call_count == 2
     call_kwargs = mock_transcribe.call_args[1]
     assert call_kwargs.get("timeout") == 30.0
+
+
+# Tests for whisper_model parameter
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("fai.orchestrator.loop.transcribe")
+@patch("fai.orchestrator.loop.record_audio")
+def test_run_conversation_passes_whisper_model_to_transcribe(
+    mock_record: MagicMock,
+    mock_transcribe: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify whisper_model is passed to transcribe in voice mode."""
+    mock_record.return_value = mock_audio
+    mock_transcribe.side_effect = [
+        TranscriptResult(text="Hello"),
+        KeyboardInterrupt,
+    ]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=False, whisper_model="whisper-large-v3")
+
+    # transcribe is called twice (once for the turn, once before interrupt)
+    assert mock_transcribe.call_count == 2
+    call_kwargs = mock_transcribe.call_args[1]
+    assert call_kwargs.get("whisper_model") == "whisper-large-v3"
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("fai.orchestrator.loop.transcribe")
+@patch("fai.orchestrator.loop.record_audio")
+def test_run_conversation_default_whisper_model_is_none(
+    mock_record: MagicMock,
+    mock_transcribe: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify default whisper_model is None."""
+    mock_record.return_value = mock_audio
+    mock_transcribe.side_effect = [
+        TranscriptResult(text="Hello"),
+        KeyboardInterrupt,
+    ]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=False)
+
+    assert mock_transcribe.call_count == 2
+    call_kwargs = mock_transcribe.call_args[1]
+    assert call_kwargs.get("whisper_model") is None
