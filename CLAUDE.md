@@ -251,7 +251,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 #### Features
 
 - [x] `P12` Model selection: Add `--model` CLI flag to choose specific LLM models (gpt-4o, gpt-4o-mini, claude-sonnet, claude-haiku)
-- [ ] `P13` Conversation trimming: Limit conversation history length for long sessions (token counting + oldest message removal)
+- [x] `P13` Conversation trimming: Limit conversation history length for long sessions (token counting + oldest message removal)
 - [ ] `P14` Request timeouts: Add configurable timeout for API calls via `--timeout` flag
 - [ ] `P15` Session playback: Add `--playback` mode to replay recorded sessions from JSON metadata
 - [ ] `P16` Whisper model selection: Add `--whisper-model` flag for local/API Whisper model choice

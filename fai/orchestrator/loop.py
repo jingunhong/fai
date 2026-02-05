@@ -8,6 +8,7 @@ from fai.dialogue import (
     DialogueModel,
     generate_response,
     generate_response_stream,
+    trim_history,
 )
 from fai.logging import get_logger
 from fai.motion import animate, animate_stream
@@ -119,9 +120,10 @@ def run_conversation(
             )
             print(f"AI: {response.text}\n")
 
-            # Update conversation history
+            # Update conversation history and trim if needed
             history.append({"role": "user", "content": user_text})
             history.append({"role": "assistant", "content": response.text})
+            history = trim_history(history)
 
             # Step 3: Synthesize speech
             logger.debug("Synthesizing speech")
@@ -257,9 +259,10 @@ def run_conversation_stream(
             )
             logger.debug("Streaming response complete")
 
-            # Update conversation history
+            # Update conversation history and trim if needed
             history.append({"role": "user", "content": user_text})
             history.append({"role": "assistant", "content": response_text})
+            history = trim_history(history)
 
             # Step 3: Stream TTS and animation
             logger.debug("Streaming TTS and animation")
