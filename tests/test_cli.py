@@ -72,6 +72,8 @@ def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
         backend="none",
         dialogue_backend="openai",
         tts_backend="openai",
+        record=False,
+        output_dir=None,
     )
 
 
@@ -92,6 +94,8 @@ def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
         backend="auto",
         dialogue_backend="openai",
         tts_backend="openai",
+        record=False,
+        output_dir=None,
     )
 
 
@@ -128,6 +132,8 @@ def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None
         backend="auto",
         dialogue_backend="claude",
         tts_backend="openai",
+        record=False,
+        output_dir=None,
     )
 
 
@@ -164,6 +170,8 @@ def test_cli_passes_tts_backend_to_run_conversation(tmp_path: Path) -> None:
         backend="auto",
         dialogue_backend="openai",
         tts_backend="elevenlabs",
+        record=False,
+        output_dir=None,
     )
 
 
@@ -181,3 +189,68 @@ def test_cli_default_tts_backend_is_openai(tmp_path: Path) -> None:
     mock_run.assert_called_once()
     _, kwargs = mock_run.call_args
     assert kwargs.get("tts_backend") == "openai"
+
+
+def test_cli_passes_record_flag_to_run_conversation(tmp_path: Path) -> None:
+    """Verify --record flag is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--record"]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("record") is True
+
+
+def test_cli_passes_output_dir_to_run_conversation(tmp_path: Path) -> None:
+    """Verify --output-dir is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+    output_dir = tmp_path / "my_recordings"
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--output-dir", str(output_dir)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("output_dir") == output_dir
+
+
+def test_cli_default_record_is_false(tmp_path: Path) -> None:
+    """Verify default record is False."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("record") is False
+
+
+def test_cli_default_output_dir_is_none(tmp_path: Path) -> None:
+    """Verify default output_dir is None."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("output_dir") is None

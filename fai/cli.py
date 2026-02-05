@@ -51,6 +51,17 @@ def main() -> None:
         action="store_true",
         help="List available lip-sync backends and exit",
     )
+    parser.add_argument(
+        "--record",
+        action="store_true",
+        help="Save session audio/video to files",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Directory for recordings (default: ./recordings)",
+    )
 
     args = parser.parse_args()
 
@@ -83,4 +94,6 @@ def main() -> None:
             backend=args.backend,
             dialogue_backend=args.dialogue,
             tts_backend=args.tts,
+            record=args.record,
+            output_dir=args.output_dir,
         )

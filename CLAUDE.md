@@ -36,6 +36,9 @@ fai/
 │   ├── backend.py       # LipSyncBackend protocol and utilities
 │   ├── wav2lip.py       # Wav2Lip backend integration
 │   └── sadtalker.py     # SadTalker backend integration
+├── recording/           # session recording
+│   ├── __init__.py
+│   └── record.py        # save audio/video to files
 ├── render/              # OpenCV display
 │   ├── __init__.py
 │   └── display.py       # video frame display
@@ -52,6 +55,8 @@ uv run fai face.jpg --text               # text input mode (for debugging)
 uv run fai face.jpg --backend wav2lip    # use specific lip-sync backend
 uv run fai face.jpg --dialogue claude    # use Claude as dialogue backend
 uv run fai face.jpg --tts elevenlabs     # use ElevenLabs as TTS backend
+uv run fai face.jpg --record             # save session audio/video to files
+uv run fai face.jpg --record --output-dir ./my_recordings
 uv run fai --list-backends               # show available backends
 ```
 
@@ -60,6 +65,8 @@ uv run fai --list-backends               # show available backends
 - `--backend`: lip-sync backend (auto, wav2lip, sadtalker, none)
 - `--dialogue`: dialogue backend (openai, claude)
 - `--tts`: TTS backend (openai, elevenlabs)
+- `--record`: save session audio/video to files
+- `--output-dir`: directory for recordings (default: ./recordings)
 - `--list-backends`: list available backends and exit
 
 ## Architecture
@@ -198,6 +205,6 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P3` Error recovery: Add retry logic with exponential backoff for API failures
 - [x] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
 - [x] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
-- [ ] `P6` Session recording: Save conversation audio/video to files
+- [x] `P6` Session recording: Save conversation audio/video to files
 - [ ] `P7` Multiple voices: Support voice selection via CLI flag
 - [ ] `P8` Streaming mode: Low-latency streaming architecture (post-MVP)

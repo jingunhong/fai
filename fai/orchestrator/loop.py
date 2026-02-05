@@ -6,7 +6,9 @@ from typing import Literal
 from fai.dialogue import DialogueBackend, generate_response
 from fai.motion import animate
 from fai.perception import record_audio, transcribe
+from fai.recording import SessionRecorder
 from fai.render import display
+from fai.types import AudioData
 from fai.voice import TTSBackend, play_audio, synthesize
 
 DEFAULT_RECORD_DURATION = 5.0  # seconds
@@ -21,6 +23,8 @@ def run_conversation(
     backend: BackendType = "auto",
     dialogue_backend: DialogueBackend = "openai",
     tts_backend: TTSBackend = "openai",
+    record: bool = False,
+    output_dir: Path | None = None,
 ) -> None:
     """Run the main conversation loop.
 
@@ -37,6 +41,8 @@ def run_conversation(
         backend: Lip-sync backend to use for animation.
         dialogue_backend: LLM backend to use for response generation.
         tts_backend: TTS backend to use for speech synthesis.
+        record: If True, save session audio/video to files.
+        output_dir: Directory for recordings (default: ./recordings).
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -47,13 +53,21 @@ def run_conversation(
 
     history: list[dict[str, str]] = []
 
+    # Initialize session recorder if recording is enabled
+    recorder: SessionRecorder | None = None
+    if record:
+        recordings_dir = output_dir or Path("./recordings")
+        recorder = SessionRecorder(recordings_dir)
+        recorder.start()
+        print(f"Recording session to: {recorder.session_dir}")
+
     print("Starting fai conversation...")
     print("Press Ctrl+C to exit.\n")
 
     try:
         while True:
             # Step 1: Get user input
-            user_text = _get_user_input(text_mode)
+            user_text, user_audio = _get_user_input(text_mode)
             if not user_text:
                 continue
 
@@ -76,29 +90,52 @@ def run_conversation(
             # Step 5: Animate face
             frames = animate(face_image, audio, backend=backend)
 
-            # Step 6: Display animated video
+            # Step 6: If recording, collect frames for both display and recording
+            if recorder:
+                frame_list = list(frames)
+                recorder.record_turn(
+                    user_text=user_text,
+                    response_text=response.text,
+                    user_audio=user_audio,
+                    response_audio=audio,
+                    video_frames=frame_list,
+                )
+                frames = iter(frame_list)
+
+            # Step 7: Display animated video
             display(frames)
 
     except KeyboardInterrupt:
         print("\nGoodbye!")
+    finally:
+        # Finalize recording if enabled
+        if recorder:
+            metadata = {
+                "text_mode": text_mode,
+                "backend": backend,
+                "dialogue_backend": dialogue_backend,
+                "tts_backend": tts_backend,
+            }
+            metadata_path = recorder.finalize(metadata)
+            print(f"Session saved to: {metadata_path}")
 
 
-def _get_user_input(text_mode: bool) -> str:
+def _get_user_input(text_mode: bool) -> tuple[str, AudioData | None]:
     """Get user input from keyboard or microphone.
 
     Args:
         text_mode: If True, read from keyboard. If False, record from microphone.
 
     Returns:
-        User's input as text string.
+        Tuple of (user text, optional AudioData for voice mode).
     """
     if text_mode:
         try:
-            return input("You: ").strip()
+            return input("You: ").strip(), None
         except EOFError:
-            return ""
+            return "", None
     else:
         print(f"Listening for {DEFAULT_RECORD_DURATION} seconds...")
         audio = record_audio(DEFAULT_RECORD_DURATION)
         result = transcribe(audio)
-        return result.text.strip()
+        return result.text.strip(), audio
