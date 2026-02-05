@@ -37,7 +37,7 @@ def test_transcribe_returns_transcript_result(
     mock_openai_client: MagicMock, sample_audio: AudioData
 ) -> None:
     """Verify transcribe returns a TranscriptResult."""
-    with patch("fai.perception.OpenAI", return_value=mock_openai_client):
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
         result = transcribe(sample_audio)
 
     assert isinstance(result, TranscriptResult)
@@ -48,7 +48,7 @@ def test_transcribe_calls_whisper_api(
     mock_openai_client: MagicMock, sample_audio: AudioData
 ) -> None:
     """Verify transcribe calls the Whisper API."""
-    with patch("fai.perception.OpenAI", return_value=mock_openai_client):
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
         transcribe(sample_audio)
 
     mock_openai_client.audio.transcriptions.create.assert_called_once()
@@ -60,7 +60,7 @@ def test_transcribe_sends_wav_file(
     mock_openai_client: MagicMock, sample_audio: AudioData
 ) -> None:
     """Verify transcribe sends audio as a WAV file."""
-    with patch("fai.perception.OpenAI", return_value=mock_openai_client):
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
         transcribe(sample_audio)
 
     call_args = mock_openai_client.audio.transcriptions.create.call_args
@@ -82,8 +82,8 @@ def test_record_audio_returns_audio_data() -> None:
     mock_samples = np.zeros((16000, 1), dtype=np.float32)
 
     with (
-        patch("fai.perception.sd.rec", return_value=mock_samples) as mock_rec,
-        patch("fai.perception.sd.wait"),
+        patch("fai.perception.record.sd.rec", return_value=mock_samples) as mock_rec,
+        patch("fai.perception.record.sd.wait"),
     ):
         result = record_audio(1.0)
 
@@ -97,8 +97,8 @@ def test_record_audio_uses_correct_parameters() -> None:
     mock_samples = np.zeros((32000, 1), dtype=np.float32)
 
     with (
-        patch("fai.perception.sd.rec", return_value=mock_samples) as mock_rec,
-        patch("fai.perception.sd.wait"),
+        patch("fai.perception.record.sd.rec", return_value=mock_samples) as mock_rec,
+        patch("fai.perception.record.sd.wait"),
     ):
         record_audio(2.0)
 
@@ -115,8 +115,8 @@ def test_record_audio_waits_for_completion() -> None:
     mock_samples = np.zeros((16000, 1), dtype=np.float32)
 
     with (
-        patch("fai.perception.sd.rec", return_value=mock_samples),
-        patch("fai.perception.sd.wait") as mock_wait,
+        patch("fai.perception.record.sd.rec", return_value=mock_samples),
+        patch("fai.perception.record.sd.wait") as mock_wait,
     ):
         record_audio(1.0)
 
@@ -129,8 +129,8 @@ def test_record_audio_flattens_samples() -> None:
     mock_samples = np.zeros((16000, 1), dtype=np.float32)
 
     with (
-        patch("fai.perception.sd.rec", return_value=mock_samples),
-        patch("fai.perception.sd.wait"),
+        patch("fai.perception.record.sd.rec", return_value=mock_samples),
+        patch("fai.perception.record.sd.wait"),
     ):
         result = record_audio(1.0)
 
@@ -158,7 +158,7 @@ def test_transcribe_with_different_sample_rate(
     samples = np.zeros(44100, dtype=np.float32)
     audio = AudioData(samples=samples, sample_rate=44100)
 
-    with patch("fai.perception.OpenAI", return_value=mock_openai_client):
+    with patch("fai.perception.transcribe.OpenAI", return_value=mock_openai_client):
         result = transcribe(audio)
 
     assert isinstance(result, TranscriptResult)
@@ -170,8 +170,8 @@ def test_record_audio_with_fractional_duration() -> None:
     mock_samples = np.zeros((8000, 1), dtype=np.float32)
 
     with (
-        patch("fai.perception.sd.rec", return_value=mock_samples) as mock_rec,
-        patch("fai.perception.sd.wait"),
+        patch("fai.perception.record.sd.rec", return_value=mock_samples) as mock_rec,
+        patch("fai.perception.record.sd.wait"),
     ):
         record_audio(0.5)
 

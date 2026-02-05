@@ -29,7 +29,7 @@ def test_generate_response_returns_dialogue_response(
     mock_openai_client: MagicMock,
 ) -> None:
     """Verify generate_response returns a DialogueResponse."""
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         result = generate_response("Hello", [])
 
     assert isinstance(result, DialogueResponse)
@@ -38,7 +38,7 @@ def test_generate_response_returns_dialogue_response(
 
 def test_generate_response_with_empty_history(mock_openai_client: MagicMock) -> None:
     """Verify generate_response works with empty history."""
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         result = generate_response("What's the weather?", [])
 
     assert isinstance(result, DialogueResponse)
@@ -61,7 +61,7 @@ def test_generate_response_with_history(mock_openai_client: MagicMock) -> None:
         {"role": "assistant", "content": "Hello! Nice to meet you."},
     ]
 
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         generate_response("How are you?", history)
 
     call_args = mock_openai_client.chat.completions.create.call_args
@@ -76,7 +76,7 @@ def test_generate_response_with_history(mock_openai_client: MagicMock) -> None:
 
 def test_generate_response_uses_gpt4o_model(mock_openai_client: MagicMock) -> None:
     """Verify generate_response uses the gpt-4o model."""
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         generate_response("Test message", [])
 
     call_args = mock_openai_client.chat.completions.create.call_args
@@ -103,7 +103,7 @@ def test_generate_response_handles_none_content(
         0
     ].message.content = None
 
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         result = generate_response("Hello", [])
 
     assert result.text == ""
@@ -120,7 +120,7 @@ def test_generate_response_with_long_history(mock_openai_client: MagicMock) -> N
         {"role": "assistant", "content": "Third answer"},
     ]
 
-    with patch("fai.dialogue.OpenAI", return_value=mock_openai_client):
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         generate_response("Fourth question", history)
 
     call_args = mock_openai_client.chat.completions.create.call_args

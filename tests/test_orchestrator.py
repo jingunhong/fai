@@ -41,10 +41,10 @@ def test_run_conversation_missing_image_raises() -> None:
         run_conversation(fake_path)
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
 @patch("builtins.input")
 def test_run_conversation_text_mode_single_turn(
     mock_input: MagicMock,
@@ -78,10 +78,10 @@ def test_run_conversation_text_mode_single_turn(
     mock_synthesize.assert_called_with("Hi there!")
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
 @patch("builtins.input")
 def test_run_conversation_maintains_history(
     mock_input: MagicMock,
@@ -129,10 +129,10 @@ def test_run_conversation_maintains_history(
     }
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
 @patch("builtins.input")
 def test_run_conversation_skips_empty_input(
     mock_input: MagicMock,
@@ -158,12 +158,12 @@ def test_run_conversation_skips_empty_input(
     assert first_call[0][0] == "Hello"
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
-@patch("fai.orchestrator.transcribe")
-@patch("fai.orchestrator.record_audio")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("fai.orchestrator.loop.transcribe")
+@patch("fai.orchestrator.loop.record_audio")
 def test_run_conversation_voice_mode(
     mock_record: MagicMock,
     mock_transcribe: MagicMock,
@@ -199,10 +199,10 @@ def test_run_conversation_voice_mode(
     assert first_call[0][0] == "Hello from voice"
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
 @patch("builtins.input")
 def test_run_conversation_handles_keyboard_interrupt(
     mock_input: MagicMock,
@@ -221,10 +221,10 @@ def test_run_conversation_handles_keyboard_interrupt(
     mock_generate.assert_not_called()
 
 
-@patch("fai.orchestrator.display")
-@patch("fai.orchestrator.animate")
-@patch("fai.orchestrator.synthesize")
-@patch("fai.orchestrator.generate_response")
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
 @patch("builtins.input")
 def test_run_conversation_handles_eof(
     mock_input: MagicMock,

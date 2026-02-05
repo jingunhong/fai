@@ -35,7 +35,7 @@ def make_frame_iterator(frames: list[VideoFrame]) -> Iterator[VideoFrame]:
     yield from frames
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_creates_window(mock_cv2: MagicMock, sample_frame: VideoFrame) -> None:
     """Test that display creates a named window."""
     mock_cv2.WINDOW_AUTOSIZE = 1
@@ -48,7 +48,7 @@ def test_display_creates_window(mock_cv2: MagicMock, sample_frame: VideoFrame) -
     mock_cv2.namedWindow.assert_called_once_with("fai", mock_cv2.WINDOW_AUTOSIZE)
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_shows_frames(
     mock_cv2: MagicMock, frame_sequence: list[VideoFrame]
 ) -> None:
@@ -67,7 +67,7 @@ def test_display_shows_frames(
         np.testing.assert_array_equal(actual_call[0][1], frame.image)
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_destroys_window_on_completion(
     mock_cv2: MagicMock, sample_frame: VideoFrame
 ) -> None:
@@ -82,7 +82,7 @@ def test_display_destroys_window_on_completion(
     mock_cv2.destroyWindow.assert_called_once_with("fai")
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_handles_esc_key(
     mock_cv2: MagicMock, frame_sequence: list[VideoFrame]
 ) -> None:
@@ -100,7 +100,7 @@ def test_display_handles_esc_key(
     mock_cv2.destroyWindow.assert_called_once_with("fai")
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_handles_window_close(
     mock_cv2: MagicMock, frame_sequence: list[VideoFrame]
 ) -> None:
@@ -118,7 +118,7 @@ def test_display_handles_window_close(
     mock_cv2.destroyWindow.assert_called_once_with("fai")
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_handles_empty_iterator(mock_cv2: MagicMock) -> None:
     """Test that display handles an empty frame iterator."""
     mock_cv2.WINDOW_AUTOSIZE = 1
@@ -130,7 +130,7 @@ def test_display_handles_empty_iterator(mock_cv2: MagicMock) -> None:
     mock_cv2.destroyWindow.assert_called_once_with("fai")
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_destroys_window_on_exception(
     mock_cv2: MagicMock, sample_frame: VideoFrame
 ) -> None:
@@ -146,9 +146,9 @@ def test_display_destroys_window_on_exception(
     mock_cv2.destroyWindow.assert_called_once_with("fai")
 
 
-@patch("fai.render.time.sleep")
-@patch("fai.render.time.perf_counter_ns")
-@patch("fai.render.cv2")
+@patch("fai.render.display.time.sleep")
+@patch("fai.render.display.time.perf_counter_ns")
+@patch("fai.render.display.cv2")
 def test_display_respects_frame_timing(
     mock_cv2: MagicMock,
     mock_perf_counter: MagicMock,
@@ -172,7 +172,7 @@ def test_display_respects_frame_timing(
     assert mock_sleep.call_count >= len(frame_sequence) - 1
 
 
-@patch("fai.render.cv2")
+@patch("fai.render.display.cv2")
 def test_display_calls_waitkey(mock_cv2: MagicMock, sample_frame: VideoFrame) -> None:
     """Test that display calls waitKey for event processing."""
     mock_cv2.WINDOW_AUTOSIZE = 1

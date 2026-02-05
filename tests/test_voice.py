@@ -58,7 +58,7 @@ def mock_openai_client(mock_wav_response: MagicMock) -> MagicMock:
 
 def test_synthesize_returns_audio_data(mock_openai_client: MagicMock) -> None:
     """Verify synthesize returns an AudioData object."""
-    with patch("fai.voice.OpenAI", return_value=mock_openai_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
         result = synthesize("Hello world")
 
     assert isinstance(result, AudioData)
@@ -69,7 +69,7 @@ def test_synthesize_returns_audio_data(mock_openai_client: MagicMock) -> None:
 
 def test_synthesize_calls_openai_api(mock_openai_client: MagicMock) -> None:
     """Verify synthesize calls the OpenAI TTS API with correct parameters."""
-    with patch("fai.voice.OpenAI", return_value=mock_openai_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
         synthesize("Test message")
 
     mock_openai_client.audio.speech.create.assert_called_once_with(
@@ -94,7 +94,7 @@ def test_synthesize_whitespace_only_text_raises() -> None:
 
 def test_synthesize_samples_are_normalized(mock_openai_client: MagicMock) -> None:
     """Verify synthesized samples are normalized to [-1, 1] range."""
-    with patch("fai.voice.OpenAI", return_value=mock_openai_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
         result = synthesize("Test")
 
     assert result.samples.min() >= -1.0
@@ -109,7 +109,7 @@ def test_synthesize_handles_8bit_audio() -> None:
     mock_client = MagicMock()
     mock_client.audio.speech.create.return_value = mock_response
 
-    with patch("fai.voice.OpenAI", return_value=mock_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_client):
         result = synthesize("Test")
 
     assert isinstance(result, AudioData)
@@ -122,7 +122,7 @@ def test_synthesize_with_long_text(mock_openai_client: MagicMock) -> None:
     """Verify synthesize works with longer text."""
     long_text = "This is a longer piece of text that would generate more audio."
 
-    with patch("fai.voice.OpenAI", return_value=mock_openai_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
         result = synthesize(long_text)
 
     assert isinstance(result, AudioData)
@@ -138,7 +138,7 @@ def test_synthesize_preserves_sample_rate(mock_openai_client: MagicMock) -> None
     mock_response.content = _create_mock_wav_bytes(sample_rate=16000)
     mock_openai_client.audio.speech.create.return_value = mock_response
 
-    with patch("fai.voice.OpenAI", return_value=mock_openai_client):
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
         result = synthesize("Test")
 
     assert result.sample_rate == 16000

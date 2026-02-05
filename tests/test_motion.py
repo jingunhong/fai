@@ -35,7 +35,7 @@ def test_animate_yields_video_frames(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify animate yields VideoFrame objects."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, sample_audio))
 
     assert len(frames) > 0
@@ -46,7 +46,7 @@ def test_animate_frame_has_correct_shape(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify each frame has the same shape as the input image."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, sample_audio))
 
     for frame in frames:
@@ -57,7 +57,7 @@ def test_animate_timestamps_are_sequential(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify frame timestamps are sequential and increasing."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, sample_audio))
 
     timestamps = [f.timestamp_ms for f in frames]
@@ -73,7 +73,7 @@ def test_animate_frame_count_matches_audio_duration(
     samples = np.zeros(32000, dtype=np.float32)
     audio = AudioData(samples=samples, sample_rate=16000)
 
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, audio))
 
     # 2 seconds at 30fps = 60 frames
@@ -92,7 +92,7 @@ def test_animate_frame_dtype_is_uint8(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify frame images are uint8 dtype."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, sample_audio))
 
     for frame in frames:
@@ -103,7 +103,7 @@ def test_animate_first_frame_starts_at_zero(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify the first frame has timestamp 0."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, sample_audio))
 
     assert frames[0].timestamp_ms == 0
@@ -117,7 +117,7 @@ def test_animate_short_audio(mock_face_path: Path, sample_image: np.ndarray) -> 
         sample_rate=16000,
     )
 
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         frames = list(animate(mock_face_path, short_audio))
 
     assert len(frames) >= 1
@@ -128,7 +128,7 @@ def test_animate_unreadable_image_raises(
 ) -> None:
     """Verify animate raises ValueError when cv2.imread returns None."""
     with (
-        patch("fai.motion.cv2.imread", return_value=None),
+        patch("fai.motion.animate.cv2.imread", return_value=None),
         pytest.raises(ValueError, match="Failed to read image"),
     ):
         list(animate(mock_face_path, sample_audio))
@@ -138,7 +138,7 @@ def test_animate_is_iterator(
     mock_face_path: Path, sample_audio: AudioData, sample_image: np.ndarray
 ) -> None:
     """Verify animate returns an iterator (yields frames lazily)."""
-    with patch("fai.motion.cv2.imread", return_value=sample_image):
+    with patch("fai.motion.animate.cv2.imread", return_value=sample_image):
         result = animate(mock_face_path, sample_audio)
 
     # Should be an iterator, not a list
