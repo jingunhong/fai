@@ -74,8 +74,8 @@ def test_run_conversation_text_mode_single_turn(
     first_call = mock_generate.call_args_list[0]
     assert first_call[0][0] == "Hello"  # user_text
 
-    # Verify synthesize was called with response text
-    mock_synthesize.assert_called_with("Hi there!")
+    # Verify synthesize was called with response text and backend
+    mock_synthesize.assert_called_with("Hi there!", backend="openai")
 
 
 @patch("fai.orchestrator.loop.display")
@@ -373,4 +373,66 @@ def test_run_conversation_default_dialogue_backend_is_openai(
     # Verify generate_response was called with backend="openai" (default)
     mock_generate.assert_called_once()
     call_kwargs = mock_generate.call_args[1]
+    assert call_kwargs.get("backend") == "openai"
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("builtins.input")
+def test_run_conversation_passes_tts_backend_to_synthesize(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify tts_backend parameter is passed to synthesize."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=True, tts_backend="elevenlabs")
+
+    # Verify synthesize was called with backend parameter
+    mock_synthesize.assert_called_once()
+    call_kwargs = mock_synthesize.call_args[1]
+    assert call_kwargs.get("backend") == "elevenlabs"
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("builtins.input")
+def test_run_conversation_default_tts_backend_is_openai(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify default tts_backend is 'openai'."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=True)
+
+    # Verify synthesize was called with backend="openai" (default)
+    mock_synthesize.assert_called_once()
+    call_kwargs = mock_synthesize.call_args[1]
     assert call_kwargs.get("backend") == "openai"

@@ -40,6 +40,13 @@ def main() -> None:
         help="Dialogue backend: openai (default) or claude",
     )
     parser.add_argument(
+        "--tts",
+        type=str,
+        choices=["openai", "elevenlabs"],
+        default="openai",
+        help="TTS backend: openai (default) or elevenlabs",
+    )
+    parser.add_argument(
         "--list-backends",
         action="store_true",
         help="List available lip-sync backends and exit",
@@ -75,4 +82,5 @@ def main() -> None:
             text_mode=args.text,
             backend=args.backend,
             dialogue_backend=args.dialogue,
+            tts_backend=args.tts,
         )

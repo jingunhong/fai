@@ -51,6 +51,7 @@ uv run fai face.jpg                      # voice mode (default)
 uv run fai face.jpg --text               # text input mode (for debugging)
 uv run fai face.jpg --backend wav2lip    # use specific lip-sync backend
 uv run fai face.jpg --dialogue claude    # use Claude as dialogue backend
+uv run fai face.jpg --tts elevenlabs     # use ElevenLabs as TTS backend
 uv run fai --list-backends               # show available backends
 ```
 
@@ -58,6 +59,7 @@ uv run fai --list-backends               # show available backends
 - `--text`: use keyboard input instead of microphone
 - `--backend`: lip-sync backend (auto, wav2lip, sadtalker, none)
 - `--dialogue`: dialogue backend (openai, claude)
+- `--tts`: TTS backend (openai, elevenlabs)
 - `--list-backends`: list available backends and exit
 
 ## Architecture
@@ -160,6 +162,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 
 - `openai` — Whisper API, LLM, TTS
 - `anthropic` — Claude API for dialogue
+- `elevenlabs` — ElevenLabs TTS API
 - `python-dotenv` — .env loading
 - `sounddevice` — microphone capture
 - `opencv-python` — video display
@@ -194,7 +197,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
 - [x] `P3` Error recovery: Add retry logic with exponential backoff for API failures
 - [x] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
-- [ ] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
+- [x] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
 - [ ] `P6` Session recording: Save conversation audio/video to files
 - [ ] `P7` Multiple voices: Support voice selection via CLI flag
 - [ ] `P8` Streaming mode: Low-latency streaming architecture (post-MVP)

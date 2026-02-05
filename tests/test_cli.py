@@ -67,7 +67,11 @@ def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
         cli.main()
 
     mock_run.assert_called_once_with(
-        face_path, text_mode=False, backend="none", dialogue_backend="openai"
+        face_path,
+        text_mode=False,
+        backend="none",
+        dialogue_backend="openai",
+        tts_backend="openai",
     )
 
 
@@ -83,7 +87,11 @@ def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
         cli.main()
 
     mock_run.assert_called_once_with(
-        face_path, text_mode=True, backend="auto", dialogue_backend="openai"
+        face_path,
+        text_mode=True,
+        backend="auto",
+        dialogue_backend="openai",
+        tts_backend="openai",
     )
 
 
@@ -115,7 +123,11 @@ def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None
         cli.main()
 
     mock_run.assert_called_once_with(
-        face_path, text_mode=False, backend="auto", dialogue_backend="claude"
+        face_path,
+        text_mode=False,
+        backend="auto",
+        dialogue_backend="claude",
+        tts_backend="openai",
     )
 
 
@@ -133,3 +145,39 @@ def test_cli_default_dialogue_backend_is_openai(tmp_path: Path) -> None:
     mock_run.assert_called_once()
     _, kwargs = mock_run.call_args
     assert kwargs.get("dialogue_backend") == "openai"
+
+
+def test_cli_passes_tts_backend_to_run_conversation(tmp_path: Path) -> None:
+    """Verify --tts is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--tts", "elevenlabs"]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once_with(
+        face_path,
+        text_mode=False,
+        backend="auto",
+        dialogue_backend="openai",
+        tts_backend="elevenlabs",
+    )
+
+
+def test_cli_default_tts_backend_is_openai(tmp_path: Path) -> None:
+    """Verify default TTS backend is 'openai'."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("tts_backend") == "openai"

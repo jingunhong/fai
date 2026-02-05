@@ -7,7 +7,7 @@ from fai.dialogue import DialogueBackend, generate_response
 from fai.motion import animate
 from fai.perception import record_audio, transcribe
 from fai.render import display
-from fai.voice import play_audio, synthesize
+from fai.voice import TTSBackend, play_audio, synthesize
 
 DEFAULT_RECORD_DURATION = 5.0  # seconds
 
@@ -20,6 +20,7 @@ def run_conversation(
     text_mode: bool = False,
     backend: BackendType = "auto",
     dialogue_backend: DialogueBackend = "openai",
+    tts_backend: TTSBackend = "openai",
 ) -> None:
     """Run the main conversation loop.
 
@@ -35,6 +36,7 @@ def run_conversation(
         text_mode: If True, use keyboard input. If False, use microphone.
         backend: Lip-sync backend to use for animation.
         dialogue_backend: LLM backend to use for response generation.
+        tts_backend: TTS backend to use for speech synthesis.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -66,7 +68,7 @@ def run_conversation(
             history.append({"role": "assistant", "content": response.text})
 
             # Step 3: Synthesize speech
-            audio = synthesize(response.text)
+            audio = synthesize(response.text, backend=tts_backend)
 
             # Step 4: Play audio (non-blocking so animation can start)
             play_audio(audio, blocking=False)

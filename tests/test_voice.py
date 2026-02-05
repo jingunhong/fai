@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from fai.types import AudioData
-from fai.voice import play_audio, stop_audio, synthesize
+from fai.voice import TTSBackend, play_audio, stop_audio, synthesize
 
 
 def _create_mock_wav_bytes(
@@ -40,6 +40,17 @@ def _create_mock_wav_bytes(
     return buffer.getvalue()
 
 
+def _create_mock_pcm_bytes(
+    sample_rate: int = 22050,
+    duration_seconds: float = 0.1,
+) -> bytes:
+    """Create mock PCM audio bytes (16-bit signed) for testing ElevenLabs."""
+    n_samples = int(sample_rate * duration_seconds)
+    samples = np.sin(2 * np.pi * 440 * np.arange(n_samples) / sample_rate) * 16000
+    result: bytes = samples.astype(np.int16).tobytes()
+    return result
+
+
 @pytest.fixture  # type: ignore[misc]
 def mock_wav_response() -> MagicMock:
     """Create a mock OpenAI TTS response with WAV data."""
@@ -53,6 +64,17 @@ def mock_openai_client(mock_wav_response: MagicMock) -> MagicMock:
     """Create a mock OpenAI client."""
     mock_client = MagicMock()
     mock_client.audio.speech.create.return_value = mock_wav_response
+    return mock_client
+
+
+@pytest.fixture  # type: ignore[misc]
+def mock_elevenlabs_client() -> MagicMock:
+    """Create a mock ElevenLabs client."""
+    mock_client = MagicMock()
+    # Return a generator-like iterator of PCM audio chunks
+    mock_client.text_to_speech.convert.return_value = iter(
+        [_create_mock_pcm_bytes(22050, 0.05), _create_mock_pcm_bytes(22050, 0.05)]
+    )
     return mock_client
 
 
@@ -142,6 +164,119 @@ def test_synthesize_preserves_sample_rate(mock_openai_client: MagicMock) -> None
         result = synthesize("Test")
 
     assert result.sample_rate == 16000
+
+
+def test_synthesize_default_backend_is_openai(mock_openai_client: MagicMock) -> None:
+    """Verify synthesize defaults to OpenAI backend."""
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
+        synthesize("Test")
+
+    mock_openai_client.audio.speech.create.assert_called_once()
+
+
+def test_synthesize_explicit_openai_backend(mock_openai_client: MagicMock) -> None:
+    """Verify synthesize with explicit openai backend uses OpenAI."""
+    with patch("fai.voice.synthesize.OpenAI", return_value=mock_openai_client):
+        result = synthesize("Test", backend="openai")
+
+    assert isinstance(result, AudioData)
+    mock_openai_client.audio.speech.create.assert_called_once()
+
+
+def test_synthesize_invalid_backend_raises() -> None:
+    """Verify synthesize raises ValueError for invalid backend."""
+    with pytest.raises(ValueError, match="Invalid backend"):
+        synthesize("Test", backend="invalid")  # type: ignore[arg-type]
+
+
+# =============================================================================
+# Tests for ElevenLabs TTS backend
+# =============================================================================
+
+
+def test_synthesize_elevenlabs_returns_audio_data(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify synthesize with ElevenLabs backend returns AudioData."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        result = synthesize("Hello world", backend="elevenlabs")
+
+    assert isinstance(result, AudioData)
+    assert isinstance(result.samples, np.ndarray)
+    assert result.samples.dtype == np.float32
+    assert result.sample_rate == 22050
+
+
+def test_synthesize_elevenlabs_calls_api(mock_elevenlabs_client: MagicMock) -> None:
+    """Verify synthesize with ElevenLabs backend calls the API correctly."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        synthesize("Test message", backend="elevenlabs")
+
+    mock_elevenlabs_client.text_to_speech.convert.assert_called_once_with(
+        voice_id="21m00Tcm4TlvDq8ikWAM",
+        text="Test message",
+        model_id="eleven_monolingual_v1",
+        output_format="pcm_22050",
+    )
+
+
+def test_synthesize_elevenlabs_samples_normalized(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify ElevenLabs samples are normalized to [-1, 1] range."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        result = synthesize("Test", backend="elevenlabs")
+
+    assert result.samples.min() >= -1.0
+    assert result.samples.max() <= 1.0
+
+
+def test_synthesize_elevenlabs_concatenates_chunks(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify ElevenLabs response chunks are concatenated correctly."""
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        result = synthesize("Test", backend="elevenlabs")
+
+    # Verify that we got samples from both chunks (count depends on float precision)
+    # Each chunk is ~0.05s at 22050 Hz (~1102 samples), so 2 chunks should be ~2204
+    assert len(result.samples) > 2000  # At least 2 chunks worth
+    assert len(result.samples) < 2500  # But not too many
+
+
+def test_synthesize_elevenlabs_empty_text_raises() -> None:
+    """Verify ElevenLabs backend raises ValueError for empty text."""
+    with pytest.raises(ValueError, match="text cannot be empty"):
+        synthesize("", backend="elevenlabs")
+
+
+def test_synthesize_elevenlabs_whitespace_only_raises() -> None:
+    """Verify ElevenLabs backend raises ValueError for whitespace-only text."""
+    with pytest.raises(ValueError, match="text cannot be empty"):
+        synthesize("   ", backend="elevenlabs")
+
+
+def test_synthesize_elevenlabs_with_long_text(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify ElevenLabs backend works with longer text."""
+    long_text = "This is a longer piece of text for ElevenLabs synthesis."
+
+    with patch("fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client):
+        result = synthesize(long_text, backend="elevenlabs")
+
+    assert isinstance(result, AudioData)
+    call_args = mock_elevenlabs_client.text_to_speech.convert.call_args
+    assert call_args.kwargs["text"] == long_text
+
+
+def test_tts_backend_type_alias() -> None:
+    """Verify TTSBackend type alias is exported correctly."""
+    # This verifies the import works
+    backend: TTSBackend = "openai"
+    assert backend == "openai"
+    backend = "elevenlabs"
+    assert backend == "elevenlabs"
 
 
 # =============================================================================

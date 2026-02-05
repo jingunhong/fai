@@ -10,6 +10,7 @@ dependencies = [
     "opencv-python",
     "numpy",
     "anthropic>=0.77.1",
+    "elevenlabs>=2.34.0",
 ]
 
 [project.optional-dependencies]
