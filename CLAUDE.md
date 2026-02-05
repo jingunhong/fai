@@ -26,8 +26,9 @@ fai/
 ├── dialogue/            # LLM response generation
 │   ├── __init__.py
 │   └── generate.py      # OpenAI GPT-4o responses
-├── voice/               # TTS (text-to-speech)
+├── voice/               # TTS (text-to-speech) and audio playback
 │   ├── __init__.py
+│   ├── playback.py      # audio playback via sounddevice
 │   └── synthesize.py    # OpenAI TTS synthesis
 ├── motion/              # audio → facial animation
 │   ├── __init__.py
@@ -175,11 +176,11 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] Render component (OpenCV window display with frame timing)
 - [x] Orchestrator (main conversation loop)
 - [x] CLI interface (`python -m fai` with argparse)
-- [x] Comprehensive test suite (56 tests, all passing)
+- [x] Comprehensive test suite (63 tests, all passing)
 
 ### TODO (Priority Order)
 
-- [ ] `P1` Audio playback: Play synthesized speech audio through speakers during response
+- [x] `P1` Audio playback: Play synthesized speech audio through speakers during response
 - [ ] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
 - [ ] `P3` Error recovery: Add retry logic with exponential backoff for API failures
 - [ ] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend

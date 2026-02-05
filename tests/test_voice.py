@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from fai.types import AudioData
-from fai.voice import synthesize
+from fai.voice import play_audio, stop_audio, synthesize
 
 
 def _create_mock_wav_bytes(
@@ -142,3 +142,86 @@ def test_synthesize_preserves_sample_rate(mock_openai_client: MagicMock) -> None
         result = synthesize("Test")
 
     assert result.sample_rate == 16000
+
+
+# =============================================================================
+# Tests for play_audio
+# =============================================================================
+
+
+@pytest.fixture  # type: ignore[misc]
+def sample_audio() -> AudioData:
+    """Create sample audio data for testing."""
+    samples = np.sin(2 * np.pi * 440 * np.arange(16000) / 16000).astype(np.float32)
+    return AudioData(samples=samples, sample_rate=16000)
+
+
+def test_play_audio_calls_sounddevice_play(sample_audio: AudioData) -> None:
+    """Verify play_audio calls sd.play with correct parameters."""
+    with patch("fai.voice.playback.sd") as mock_sd:
+        play_audio(sample_audio, blocking=False)
+
+    mock_sd.play.assert_called_once()
+    call_args = mock_sd.play.call_args
+    np.testing.assert_array_equal(call_args[0][0], sample_audio.samples)
+    assert call_args[1]["samplerate"] == sample_audio.sample_rate
+
+
+def test_play_audio_blocking_waits(sample_audio: AudioData) -> None:
+    """Verify play_audio with blocking=True calls sd.wait."""
+    with patch("fai.voice.playback.sd") as mock_sd:
+        play_audio(sample_audio, blocking=True)
+
+    mock_sd.play.assert_called_once()
+    mock_sd.wait.assert_called_once()
+
+
+def test_play_audio_non_blocking_does_not_wait(sample_audio: AudioData) -> None:
+    """Verify play_audio with blocking=False does not call sd.wait."""
+    with patch("fai.voice.playback.sd") as mock_sd:
+        play_audio(sample_audio, blocking=False)
+
+    mock_sd.play.assert_called_once()
+    mock_sd.wait.assert_not_called()
+
+
+def test_play_audio_empty_samples_raises() -> None:
+    """Verify play_audio raises ValueError for empty samples."""
+    empty_audio = AudioData(samples=np.array([], dtype=np.float32), sample_rate=16000)
+
+    with pytest.raises(ValueError, match="audio samples cannot be empty"):
+        play_audio(empty_audio)
+
+
+def test_play_audio_default_blocking_is_true(sample_audio: AudioData) -> None:
+    """Verify play_audio defaults to blocking=True."""
+    with patch("fai.voice.playback.sd") as mock_sd:
+        play_audio(sample_audio)
+
+    mock_sd.wait.assert_called_once()
+
+
+def test_play_audio_with_different_sample_rates() -> None:
+    """Verify play_audio respects the sample rate from AudioData."""
+    samples = np.zeros(1000, dtype=np.float32)
+
+    for sample_rate in [8000, 16000, 24000, 44100, 48000]:
+        audio = AudioData(samples=samples, sample_rate=sample_rate)
+
+        with patch("fai.voice.playback.sd") as mock_sd:
+            play_audio(audio, blocking=False)
+
+        assert mock_sd.play.call_args[1]["samplerate"] == sample_rate
+
+
+# =============================================================================
+# Tests for stop_audio
+# =============================================================================
+
+
+def test_stop_audio_calls_sounddevice_stop() -> None:
+    """Verify stop_audio calls sd.stop."""
+    with patch("fai.voice.playback.sd") as mock_sd:
+        stop_audio()
+
+    mock_sd.stop.assert_called_once()

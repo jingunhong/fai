@@ -6,7 +6,7 @@ from fai.dialogue import generate_response
 from fai.motion import animate
 from fai.perception import record_audio, transcribe
 from fai.render import display
-from fai.voice import synthesize
+from fai.voice import play_audio, synthesize
 
 DEFAULT_RECORD_DURATION = 5.0  # seconds
 
@@ -57,10 +57,13 @@ def run_conversation(face_image: Path, text_mode: bool = False) -> None:
             # Step 3: Synthesize speech
             audio = synthesize(response.text)
 
-            # Step 4: Animate face
+            # Step 4: Play audio (non-blocking so animation can start)
+            play_audio(audio, blocking=False)
+
+            # Step 5: Animate face
             frames = animate(face_image, audio)
 
-            # Step 5: Display animated video
+            # Step 6: Display animated video
             display(frames)
 
     except KeyboardInterrupt:
