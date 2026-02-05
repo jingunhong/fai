@@ -108,3 +108,29 @@ uv run pre-commit run --all-files
 - Each component should be replaceable independently
 - Minimal abstractions — a function that takes input and returns output
 - No streaming for MVP — simple sequential turn-based loop
+
+## Progress
+
+### Completed
+
+- [x] Project setup (uv, pytest, pre-commit, ruff, mypy)
+- [x] Shared types (`AudioData`, `TranscriptResult`, `DialogueResponse`, `VideoFrame`)
+- [x] Perception component (audio recording + OpenAI Whisper transcription)
+- [x] Dialogue component (OpenAI GPT-4o response generation)
+- [x] Voice component (OpenAI TTS synthesis)
+- [x] Motion component (placeholder: breathing animation, no lip-sync yet)
+- [x] Render component (OpenCV window display with frame timing)
+- [x] Orchestrator (main conversation loop)
+- [x] CLI interface (`python -m fai` with argparse)
+- [x] Comprehensive test suite (56 tests, all passing)
+
+### TODO (Priority Order)
+
+- [ ] `P1` Audio playback: Play synthesized speech audio through speakers during response
+- [ ] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
+- [ ] `P3` Error recovery: Add retry logic with exponential backoff for API failures
+- [ ] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
+- [ ] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
+- [ ] `P6` Session recording: Save conversation audio/video to files
+- [ ] `P7` Multiple voices: Support voice selection via CLI flag
+- [ ] `P8` Streaming mode: Low-latency streaming architecture (post-MVP)
