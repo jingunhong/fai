@@ -7,7 +7,7 @@ from typing import Literal
 import cv2
 import numpy as np
 
-from fai.types import AudioData, VideoFrame
+from fai.types import AudioChunk, AudioData, VideoFrame
 
 from .backend import (
     DEFAULT_FPS,
@@ -204,3 +204,85 @@ def _apply_breathing_effect(image: np.ndarray, timestamp_ms: int) -> np.ndarray:
     )
 
     return animated
+
+
+def animate_stream(
+    face_image: Path,
+    audio_chunks: Iterator[AudioChunk],
+) -> Iterator[VideoFrame]:
+    """Generate animated video frames from streaming audio chunks.
+
+    Uses breathing animation for streaming mode, generating frames as
+    audio chunks arrive. This provides low-latency animation that starts
+    immediately without waiting for the complete audio.
+
+    Note: Lip-sync backends require full audio context and are not
+    supported in streaming mode. Use `animate()` for lip-sync.
+
+    Args:
+        face_image: Path to the reference face image.
+        audio_chunks: Iterator of AudioChunk objects from streaming TTS.
+
+    Yields:
+        VideoFrame objects with animated image data and timestamps.
+
+    Raises:
+        FileNotFoundError: If the face image doesn't exist.
+        ValueError: If the image cannot be read.
+    """
+    if not face_image.exists():
+        raise FileNotFoundError(f"Face image not found: {face_image}")
+
+    # Load the face image
+    image = cv2.imread(str(face_image))
+    if image is None:
+        raise ValueError(f"Failed to read image: {face_image}")
+
+    yield from _generate_breathing_frames_streaming(image, audio_chunks)
+
+
+def _generate_breathing_frames_streaming(
+    image: np.ndarray, audio_chunks: Iterator[AudioChunk]
+) -> Iterator[VideoFrame]:
+    """Generate frames with breathing animation from streaming audio.
+
+    Yields frames as audio chunks arrive, maintaining proper timing.
+
+    Args:
+        image: BGR face image.
+        audio_chunks: Iterator of AudioChunk objects.
+
+    Yields:
+        VideoFrame objects with breathing animation applied.
+    """
+    frame_idx = 0
+    total_samples = 0
+    sample_rate: int | None = None
+
+    for chunk in audio_chunks:
+        if sample_rate is None and chunk.sample_rate > 0:
+            sample_rate = chunk.sample_rate
+
+        if sample_rate is None or sample_rate == 0:
+            continue
+
+        chunk_samples = len(chunk.samples)
+        if chunk_samples == 0:
+            continue
+
+        total_samples += chunk_samples
+
+        # Calculate how many frames this chunk should produce
+        chunk_duration_ms = int((chunk_samples / sample_rate) * 1000)
+        chunk_frames = max(1, int((chunk_duration_ms / 1000.0) * DEFAULT_FPS))
+
+        # Generate frames for this chunk
+        for _ in range(chunk_frames):
+            timestamp_ms = int((frame_idx / DEFAULT_FPS) * 1000)
+            animated_image = _apply_breathing_effect(image, timestamp_ms)
+            yield VideoFrame(image=animated_image, timestamp_ms=timestamp_ms)
+            frame_idx += 1
+
+    # If no frames were generated (empty audio), yield at least one frame
+    if frame_idx == 0:
+        yield VideoFrame(image=image.copy(), timestamp_ms=0)

@@ -61,6 +61,7 @@ uv run fai face.jpg --record --output-dir ./my_recordings
 uv run fai --list-voices                 # show available voices for default TTS
 uv run fai --list-voices --tts elevenlabs  # show ElevenLabs voices
 uv run fai --list-backends               # show available backends
+uv run fai face.jpg --stream             # streaming mode for low-latency response
 ```
 
 - First positional argument: path to reference face image (required)
@@ -73,10 +74,13 @@ uv run fai --list-backends               # show available backends
 - `--output-dir`: directory for recordings (default: ./recordings)
 - `--list-backends`: list available backends and exit
 - `--list-voices`: list available voices for selected TTS backend and exit
+- `--stream`: enable streaming mode for low-latency response (no lip-sync, no recording)
 
 ## Architecture
 
-Turn-based conversation loop (no streaming for MVP):
+### Standard Mode (Turn-based)
+
+Sequential conversation loop with full lip-sync support:
 
 ```
 1. perception: record user audio → transcribe to text (OpenAI Whisper API)
@@ -86,6 +90,23 @@ Turn-based conversation loop (no streaming for MVP):
 5. render:     display frames in OpenCV window
 6. orchestrator: runs the loop, passes data between components
 ```
+
+### Streaming Mode (Low-latency)
+
+Stream-based architecture for faster time-to-first-response:
+
+```
+1. perception: record user audio → transcribe to text
+2. dialogue:   user text → stream LLM response (text chunks)
+3. voice:      response text → stream audio chunks (ElevenLabs) or full audio (OpenAI)
+4. motion:     audio chunks → animated frames (breathing animation only, no lip-sync)
+5. render:     display frames as they arrive
+```
+
+Streaming mode uses `--stream` flag and provides lower latency but:
+- No lip-sync (uses breathing animation)
+- No session recording
+- Best with ElevenLabs TTS (true streaming) vs OpenAI TTS (single chunk)
 
 Each component exposes a simple function interface. The orchestrator calls them sequentially.
 
@@ -186,14 +207,14 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - Get it working first, optimize later
 - Each component should be replaceable independently
 - Minimal abstractions — a function that takes input and returns output
-- No streaming for MVP — simple sequential turn-based loop
+- Both turn-based and streaming modes available for different latency requirements
 
 ## Progress
 
 ### Completed
 
 - [x] Project setup (uv, pytest, pre-commit, ruff, mypy)
-- [x] Shared types (`AudioData`, `TranscriptResult`, `DialogueResponse`, `VideoFrame`)
+- [x] Shared types (`AudioData`, `TranscriptResult`, `DialogueResponse`, `VideoFrame`, `TextChunk`, `AudioChunk`)
 - [x] Perception component (audio recording + OpenAI Whisper transcription)
 - [x] Dialogue component (OpenAI GPT-4o response generation)
 - [x] Voice component (OpenAI TTS synthesis)
@@ -201,7 +222,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] Render component (OpenCV window display with frame timing)
 - [x] Orchestrator (main conversation loop)
 - [x] CLI interface (`python -m fai` with argparse)
-- [x] Comprehensive test suite (109 tests, all passing)
+- [x] Comprehensive test suite (264 tests, all passing)
 
 ### TODO (Priority Order)
 
@@ -212,4 +233,4 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 - [x] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
 - [x] `P6` Session recording: Save conversation audio/video to files
 - [x] `P7` Multiple voices: Support voice selection via CLI flag
-- [ ] `P8` Streaming mode: Low-latency streaming architecture (post-MVP)
+- [x] `P8` Streaming mode: Low-latency streaming architecture

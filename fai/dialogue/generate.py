@@ -1,6 +1,7 @@
 """LLM response generation using OpenAI or Anthropic Claude API."""
 
 import os
+from collections.abc import Iterator
 from typing import Literal, cast
 
 from anthropic import Anthropic
@@ -14,7 +15,7 @@ from openai.types.chat import (
 )
 
 from fai.retry import retry_with_backoff
-from fai.types import DialogueResponse
+from fai.types import DialogueResponse, TextChunk
 
 # Load environment variables from .env file
 load_dotenv()
@@ -120,3 +121,91 @@ def _generate_with_claude(
     if content.type == "text":
         return DialogueResponse(text=content.text)
     return DialogueResponse(text="")
+
+
+def generate_response_stream(
+    user_text: str,
+    history: list[dict[str, str]],
+    backend: DialogueBackend = "openai",
+) -> Iterator[TextChunk]:
+    """Generate streaming LLM response, yielding text chunks as they arrive.
+
+    Args:
+        user_text: The user's current message.
+        history: Previous conversation turns, each with "role" and "content" keys.
+        backend: Which LLM backend to use ("openai" or "claude").
+
+    Yields:
+        TextChunk objects containing partial response text.
+
+    Raises:
+        ValueError: If user_text is empty or backend is invalid.
+        openai.OpenAIError: If the OpenAI API call fails.
+        anthropic.APIError: If the Claude API call fails.
+    """
+    if not user_text.strip():
+        raise ValueError("user_text cannot be empty")
+
+    if backend == "claude":
+        yield from _generate_stream_with_claude(user_text, history)
+    elif backend == "openai":
+        yield from _generate_stream_with_openai(user_text, history)
+    else:
+        raise ValueError(f"Invalid backend: {backend}. Must be 'openai' or 'claude'.")
+
+
+def _generate_stream_with_openai(
+    user_text: str, history: list[dict[str, str]]
+) -> Iterator[TextChunk]:
+    """Generate streaming response using OpenAI GPT-4o."""
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+    messages: list[ChatCompletionMessageParam] = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+    for msg in history:
+        if msg["role"] == "user":
+            messages.append(cast(ChatCompletionUserMessageParam, msg))
+        else:
+            messages.append(cast(ChatCompletionAssistantMessageParam, msg))
+    messages.append({"role": "user", "content": user_text})
+
+    stream = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        stream=True,
+    )
+
+    for chunk in stream:
+        if chunk.choices and chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
+            yield TextChunk(text=content, is_final=False)
+
+    yield TextChunk(text="", is_final=True)
+
+
+def _generate_stream_with_claude(
+    user_text: str, history: list[dict[str, str]]
+) -> Iterator[TextChunk]:
+    """Generate streaming response using Anthropic Claude."""
+    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+    messages: list[MessageParam] = []
+    for msg in history:
+        role = msg["role"]
+        if role == "user":
+            messages.append({"role": "user", "content": msg["content"]})
+        else:
+            messages.append({"role": "assistant", "content": msg["content"]})
+    messages.append({"role": "user", "content": user_text})
+
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    ) as stream:
+        for text in stream.text_stream:
+            yield TextChunk(text=text, is_final=False)
+
+    yield TextChunk(text="", is_final=True)

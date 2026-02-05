@@ -34,3 +34,26 @@ class VideoFrame:
 
     image: NDArray[np.uint8]  # BGR, shape (H, W, 3)
     timestamp_ms: int
+
+
+@dataclass
+class TextChunk:
+    """A chunk of text from streaming LLM response."""
+
+    text: str
+    is_final: bool = False
+
+
+@dataclass
+class AudioChunk:
+    """A chunk of audio data from streaming TTS.
+
+    Attributes:
+        samples: Audio samples as float32 array.
+        sample_rate: Sample rate in Hz.
+        is_final: True if this is the last chunk.
+    """
+
+    samples: NDArray[np.float32]
+    sample_rate: int
+    is_final: bool = False

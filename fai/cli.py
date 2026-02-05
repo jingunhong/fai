@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from fai.motion import get_available_backends
-from fai.orchestrator import run_conversation
+from fai.orchestrator import run_conversation, run_conversation_stream
 from fai.voice import get_available_voices
 
 
@@ -76,6 +76,11 @@ def main() -> None:
         default=None,
         help="Directory for recordings (default: ./recordings)",
     )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Use streaming mode for low-latency response (no lip-sync, no recording)",
+    )
 
     args = parser.parse_args()
 
@@ -110,13 +115,34 @@ def main() -> None:
         sys.exit(1)
 
     with contextlib.suppress(KeyboardInterrupt):
-        run_conversation(
-            args.face_image,
-            text_mode=args.text,
-            backend=args.backend,
-            dialogue_backend=args.dialogue,
-            tts_backend=args.tts,
-            voice=args.voice,
-            record=args.record,
-            output_dir=args.output_dir,
-        )
+        if args.stream:
+            # Streaming mode: low-latency, no lip-sync, no recording
+            if args.record:
+                print(
+                    "Warning: Recording is not supported in streaming mode.",
+                    file=sys.stderr,
+                )
+            if args.backend not in ("auto", "none"):
+                print(
+                    f"Warning: Lip-sync backend '{args.backend}' not available in "
+                    "streaming mode. Using breathing animation.",
+                    file=sys.stderr,
+                )
+            run_conversation_stream(
+                args.face_image,
+                text_mode=args.text,
+                dialogue_backend=args.dialogue,
+                tts_backend=args.tts,
+                voice=args.voice,
+            )
+        else:
+            run_conversation(
+                args.face_image,
+                text_mode=args.text,
+                backend=args.backend,
+                dialogue_backend=args.dialogue,
+                tts_backend=args.tts,
+                voice=args.voice,
+                record=args.record,
+                output_dir=args.output_dir,
+            )
