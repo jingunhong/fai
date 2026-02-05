@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 
 from fai.types import AudioData, VideoFrame
 
-from .backend import DEFAULT_FPS, read_video_frames
+from .backend import DEFAULT_FPS, read_video_frames, write_audio_wav
 
 # Environment variable for Wav2Lip installation path
 WAV2LIP_PATH_ENV = "WAV2LIP_PATH"
@@ -102,7 +102,7 @@ class Wav2LipBackend:
             output_path = tmp_path / "output.mp4"
 
             cv2.imwrite(str(face_path), face_image)
-            _write_audio_wav(audio, audio_path)
+            write_audio_wav(audio, audio_path)
 
             # Run Wav2Lip inference
             self._run_inference(face_path, audio_path, output_path)
@@ -154,21 +154,3 @@ class Wav2LipBackend:
                 raise RuntimeError(f"Wav2Lip inference failed: {result.stderr}")
         except FileNotFoundError as e:
             raise RuntimeError(f"Failed to run Wav2Lip: {e}") from e
-
-
-def _write_audio_wav(audio: AudioData, path: Path) -> None:
-    """Write AudioData to a WAV file.
-
-    Args:
-        audio: AudioData to write.
-        path: Output file path.
-    """
-    import wave
-
-    samples_int16 = (audio.samples * 32767).astype(np.int16)
-
-    with wave.open(str(path), "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(audio.sample_rate)
-        wav_file.writeframes(samples_int16.tobytes())

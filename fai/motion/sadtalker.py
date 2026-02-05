@@ -16,8 +16,7 @@ from numpy.typing import NDArray
 
 from fai.types import AudioData, VideoFrame
 
-from .backend import DEFAULT_FPS, read_video_frames
-from .wav2lip import _write_audio_wav
+from .backend import DEFAULT_FPS, read_video_frames, write_audio_wav
 
 # Environment variable for SadTalker installation path
 SADTALKER_PATH_ENV = "SADTALKER_PATH"
@@ -104,7 +103,7 @@ class SadTalkerBackend:
             output_dir.mkdir()
 
             cv2.imwrite(str(face_path), face_image)
-            _write_audio_wav(audio, audio_path)
+            write_audio_wav(audio, audio_path)
 
             # Run SadTalker inference
             self._run_inference(face_path, audio_path, output_dir)

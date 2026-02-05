@@ -140,7 +140,7 @@ def test_sadtalker_generate_frames_runs_subprocess(
         ),
         patch("fai.motion.sadtalker.subprocess.run") as mock_run,
         patch("fai.motion.sadtalker.cv2.imwrite"),
-        patch("fai.motion.sadtalker._write_audio_wav"),
+        patch("fai.motion.sadtalker.write_audio_wav"),
     ):
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -185,7 +185,7 @@ def test_sadtalker_generate_frames_finds_output_video(
         ),
         patch("fai.motion.sadtalker.subprocess.run", side_effect=create_output_video),
         patch("fai.motion.sadtalker.cv2.imwrite"),
-        patch("fai.motion.sadtalker._write_audio_wav"),
+        patch("fai.motion.sadtalker.write_audio_wav"),
         patch("fai.motion.backend.cv2.VideoCapture") as mock_cap,
     ):
         mock_cap_instance = MagicMock()
@@ -250,7 +250,7 @@ def test_sadtalker_generate_frames_subprocess_failure(
         ),
         patch("fai.motion.sadtalker.subprocess.run") as mock_run,
         patch("fai.motion.sadtalker.cv2.imwrite"),
-        patch("fai.motion.sadtalker._write_audio_wav"),
+        patch("fai.motion.sadtalker.write_audio_wav"),
     ):
         mock_run.return_value = MagicMock(returncode=1, stderr="Error message")
 
@@ -281,7 +281,7 @@ def test_sadtalker_generate_frames_no_output_video(
         ),
         patch("fai.motion.sadtalker.subprocess.run") as mock_run,
         patch("fai.motion.sadtalker.cv2.imwrite"),
-        patch("fai.motion.sadtalker._write_audio_wav"),
+        patch("fai.motion.sadtalker.write_audio_wav"),
     ):
         mock_run.return_value = MagicMock(returncode=0)
 

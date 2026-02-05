@@ -1,5 +1,6 @@
 """Lip-sync backend protocol and utilities."""
 
+import wave
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -75,6 +76,22 @@ def calculate_frame_count(duration_ms: int, fps: int = DEFAULT_FPS) -> int:
         Number of frames (at least 1).
     """
     return max(1, int((duration_ms / 1000.0) * fps))
+
+
+def write_audio_wav(audio: AudioData, path: Path) -> None:
+    """Write AudioData to a WAV file.
+
+    Args:
+        audio: AudioData to write.
+        path: Output file path.
+    """
+    samples_int16 = (audio.samples * 32767).astype(np.int16)
+
+    with wave.open(str(path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(audio.sample_rate)
+        wav_file.writeframes(samples_int16.tobytes())
 
 
 def read_video_frames(video_path: Path, fps: int = DEFAULT_FPS) -> Iterator[VideoFrame]:

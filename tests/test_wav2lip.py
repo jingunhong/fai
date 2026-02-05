@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from fai.motion.backend import write_audio_wav
 from fai.motion.wav2lip import (
     WAV2LIP_CHECKPOINT_ENV,
     WAV2LIP_PATH_ENV,
     Wav2LipBackend,
-    _write_audio_wav,
 )
 from fai.types import AudioData, VideoFrame
 
@@ -267,9 +267,9 @@ def test_wav2lip_generate_frames_subprocess_failure(
 
 
 def test_write_audio_wav_creates_file(tmp_path: Path, sample_audio: AudioData) -> None:
-    """Verify _write_audio_wav creates a valid WAV file."""
+    """Verify write_audio_wav creates a valid WAV file."""
     output_path = tmp_path / "test.wav"
-    _write_audio_wav(sample_audio, output_path)
+    write_audio_wav(sample_audio, output_path)
 
     assert output_path.exists()
 
@@ -283,9 +283,9 @@ def test_write_audio_wav_creates_file(tmp_path: Path, sample_audio: AudioData) -
 def test_write_audio_wav_preserves_duration(
     tmp_path: Path, sample_audio: AudioData
 ) -> None:
-    """Verify _write_audio_wav preserves audio duration."""
+    """Verify write_audio_wav preserves audio duration."""
     output_path = tmp_path / "test.wav"
-    _write_audio_wav(sample_audio, output_path)
+    write_audio_wav(sample_audio, output_path)
 
     with wave.open(str(output_path), "rb") as wav_file:
         nframes = wav_file.getnframes()
