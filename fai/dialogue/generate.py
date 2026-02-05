@@ -11,6 +11,7 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
 )
 
+from fai.retry import retry_with_backoff
 from fai.types import DialogueResponse
 
 # Load environment variables from .env file
@@ -27,6 +28,7 @@ SYSTEM_PROMPT = (
 )
 
 
+@retry_with_backoff()
 def generate_response(
     user_text: str, history: list[dict[str, str]]
 ) -> DialogueResponse:

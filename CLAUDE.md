@@ -189,7 +189,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 
 - [x] `P1` Audio playback: Play synthesized speech audio through speakers during response
 - [x] `P2` Motion lip-sync: Integrate SadTalker or Wav2Lip for real lip-sync animation
-- [ ] `P3` Error recovery: Add retry logic with exponential backoff for API failures
+- [x] `P3` Error recovery: Add retry logic with exponential backoff for API failures
 - [ ] `P4` Claude API: Add Anthropic Claude as alternative dialogue backend
 - [ ] `P5` ElevenLabs: Add ElevenLabs as alternative TTS backend
 - [ ] `P6` Session recording: Save conversation audio/video to files

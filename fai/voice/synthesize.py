@@ -9,6 +9,7 @@ import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from fai.retry import retry_with_backoff
 from fai.types import AudioData
 
 # Load environment variables from .env file
@@ -19,6 +20,7 @@ DEFAULT_VOICE: Literal["alloy"] = "alloy"
 DEFAULT_RESPONSE_FORMAT: Literal["wav"] = "wav"
 
 
+@retry_with_backoff()
 def synthesize(text: str) -> AudioData:
     """Synthesize speech audio from text using OpenAI TTS API.
 

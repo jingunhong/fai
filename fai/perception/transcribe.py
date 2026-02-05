@@ -8,12 +8,14 @@ import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from fai.retry import retry_with_backoff
 from fai.types import AudioData, TranscriptResult
 
 # Load environment variables from .env file
 load_dotenv()
 
 
+@retry_with_backoff()
 def transcribe(audio: AudioData) -> TranscriptResult:
     """Transcribe audio to text using OpenAI Whisper API.
 
