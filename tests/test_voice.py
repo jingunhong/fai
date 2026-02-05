@@ -17,6 +17,7 @@ from fai.voice import (
     stop_audio,
     synthesize,
 )
+from tests.helpers import create_mock_pcm_bytes
 
 
 def _create_mock_wav_bytes(
@@ -48,17 +49,6 @@ def _create_mock_wav_bytes(
     return buffer.getvalue()
 
 
-def _create_mock_pcm_bytes(
-    sample_rate: int = 22050,
-    duration_seconds: float = 0.1,
-) -> bytes:
-    """Create mock PCM audio bytes (16-bit signed) for testing ElevenLabs."""
-    n_samples = int(sample_rate * duration_seconds)
-    samples = np.sin(2 * np.pi * 440 * np.arange(n_samples) / sample_rate) * 16000
-    result: bytes = samples.astype(np.int16).tobytes()
-    return result
-
-
 @pytest.fixture  # type: ignore[misc]
 def mock_wav_response() -> MagicMock:
     """Create a mock OpenAI TTS response with WAV data."""
@@ -81,7 +71,7 @@ def mock_elevenlabs_client() -> MagicMock:
     mock_client = MagicMock()
     # Return a generator-like iterator of PCM audio chunks
     mock_client.text_to_speech.convert.return_value = iter(
-        [_create_mock_pcm_bytes(22050, 0.05), _create_mock_pcm_bytes(22050, 0.05)]
+        [create_mock_pcm_bytes(22050, 0.05), create_mock_pcm_bytes(22050, 0.05)]
     )
     return mock_client
 
@@ -402,7 +392,7 @@ def test_synthesize_elevenlabs_with_all_voices(
         # Reset mock for fresh iterator each time
         mock_elevenlabs_client.text_to_speech.convert.reset_mock()
         mock_elevenlabs_client.text_to_speech.convert.return_value = iter(
-            [_create_mock_pcm_bytes(22050, 0.05)]
+            [create_mock_pcm_bytes(22050, 0.05)]
         )
         with patch(
             "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client
