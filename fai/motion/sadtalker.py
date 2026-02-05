@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 
 from fai.types import AudioData, VideoFrame
 
-from .backend import DEFAULT_FPS
+from .backend import DEFAULT_FPS, read_video_frames
 from .wav2lip import _write_audio_wav
 
 # Environment variable for SadTalker installation path
@@ -112,7 +112,7 @@ class SadTalkerBackend:
             # Find and read output video
             output_video = self._find_output_video(output_dir)
             if output_video:
-                yield from self._read_video_frames(output_video, fps)
+                yield from read_video_frames(output_video, fps)
 
     def _run_inference(
         self, face_path: Path, audio_path: Path, output_dir: Path
@@ -172,27 +172,3 @@ class SadTalkerBackend:
         for video_file in output_dir.rglob("*.mp4"):
             return video_file
         return None
-
-    def _read_video_frames(self, video_path: Path, fps: int) -> Iterator[VideoFrame]:
-        """Read frames from output video file.
-
-        Args:
-            video_path: Path to video file.
-            fps: Target FPS for timestamp calculation.
-
-        Yields:
-            VideoFrame objects from the video.
-        """
-        cap = cv2.VideoCapture(str(video_path))
-        try:
-            frame_idx = 0
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                timestamp_ms = int((frame_idx / fps) * 1000)
-                yield VideoFrame(image=frame, timestamp_ms=timestamp_ms)
-                frame_idx += 1
-        finally:
-            cap.release()

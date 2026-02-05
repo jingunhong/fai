@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 
 from fai.types import AudioData, VideoFrame
 
-from .backend import DEFAULT_FPS
+from .backend import DEFAULT_FPS, read_video_frames
 
 # Environment variable for Wav2Lip installation path
 WAV2LIP_PATH_ENV = "WAV2LIP_PATH"
@@ -108,7 +108,7 @@ class Wav2LipBackend:
             self._run_inference(face_path, audio_path, output_path)
 
             # Read output video and yield frames
-            yield from self._read_video_frames(output_path, fps)
+            yield from read_video_frames(output_path, fps)
 
     def _run_inference(
         self, face_path: Path, audio_path: Path, output_path: Path
@@ -152,33 +152,6 @@ class Wav2LipBackend:
                 raise RuntimeError(f"Wav2Lip inference failed: {result.stderr}")
         except FileNotFoundError as e:
             raise RuntimeError(f"Failed to run Wav2Lip: {e}") from e
-
-    def _read_video_frames(self, video_path: Path, fps: int) -> Iterator[VideoFrame]:
-        """Read frames from output video file.
-
-        Args:
-            video_path: Path to video file.
-            fps: Target FPS for timestamp calculation.
-
-        Yields:
-            VideoFrame objects from the video.
-        """
-        if not video_path.exists():
-            return
-
-        cap = cv2.VideoCapture(str(video_path))
-        try:
-            frame_idx = 0
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                timestamp_ms = int((frame_idx / fps) * 1000)
-                yield VideoFrame(image=frame, timestamp_ms=timestamp_ms)
-                frame_idx += 1
-        finally:
-            cap.release()
 
 
 def _write_audio_wav(audio: AudioData, path: Path) -> None:

@@ -1,8 +1,10 @@
 """Lip-sync backend protocol and utilities."""
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+import cv2
 import numpy as np
 from numpy.typing import NDArray
 
@@ -73,3 +75,31 @@ def calculate_frame_count(duration_ms: int, fps: int = DEFAULT_FPS) -> int:
         Number of frames (at least 1).
     """
     return max(1, int((duration_ms / 1000.0) * fps))
+
+
+def read_video_frames(video_path: Path, fps: int = DEFAULT_FPS) -> Iterator[VideoFrame]:
+    """Read frames from a video file.
+
+    Args:
+        video_path: Path to video file.
+        fps: Target FPS for timestamp calculation.
+
+    Yields:
+        VideoFrame objects from the video.
+    """
+    if not video_path.exists():
+        return
+
+    cap = cv2.VideoCapture(str(video_path))
+    try:
+        frame_idx = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            timestamp_ms = int((frame_idx / fps) * 1000)
+            yield VideoFrame(image=frame, timestamp_ms=timestamp_ms)
+            frame_idx += 1
+    finally:
+        cap.release()

@@ -16,6 +16,7 @@ from fai.motion.animate import (
 from fai.motion.backend import (
     calculate_audio_duration_ms,
     calculate_frame_count,
+    read_video_frames,
 )
 from fai.types import AudioData, VideoFrame
 
@@ -70,6 +71,62 @@ def test_calculate_frame_count_minimum() -> None:
 def test_calculate_frame_count_custom_fps() -> None:
     """Verify frame count with custom FPS."""
     assert calculate_frame_count(1000, fps=60) == 60
+
+
+def test_read_video_frames_nonexistent_file(tmp_path: Path) -> None:
+    """Verify read_video_frames yields nothing for nonexistent file."""
+    video_path = tmp_path / "nonexistent.mp4"
+    frames = list(read_video_frames(video_path))
+    assert frames == []
+
+
+def test_read_video_frames_yields_frames(
+    tmp_path: Path, sample_image: np.ndarray
+) -> None:
+    """Verify read_video_frames yields VideoFrame objects."""
+    from unittest.mock import MagicMock
+
+    video_path = tmp_path / "test.mp4"
+    video_path.touch()
+
+    with patch("fai.motion.backend.cv2.VideoCapture") as mock_cap:
+        mock_cap_instance = MagicMock()
+        mock_cap_instance.read.side_effect = [
+            (True, sample_image.copy()),
+            (True, sample_image.copy()),
+            (False, None),
+        ]
+        mock_cap.return_value = mock_cap_instance
+
+        frames = list(read_video_frames(video_path, fps=30))
+
+        assert len(frames) == 2
+        assert all(isinstance(f, VideoFrame) for f in frames)
+
+
+def test_read_video_frames_timestamps(tmp_path: Path, sample_image: np.ndarray) -> None:
+    """Verify read_video_frames generates correct timestamps."""
+    from unittest.mock import MagicMock
+
+    video_path = tmp_path / "test.mp4"
+    video_path.touch()
+
+    with patch("fai.motion.backend.cv2.VideoCapture") as mock_cap:
+        mock_cap_instance = MagicMock()
+        mock_cap_instance.read.side_effect = [
+            (True, sample_image.copy()),
+            (True, sample_image.copy()),
+            (True, sample_image.copy()),
+            (False, None),
+        ]
+        mock_cap.return_value = mock_cap_instance
+
+        frames = list(read_video_frames(video_path, fps=30))
+
+        assert len(frames) == 3
+        assert frames[0].timestamp_ms == 0
+        assert frames[1].timestamp_ms == 33  # 1000/30 = 33.33
+        assert frames[2].timestamp_ms == 66  # 2000/30 = 66.66
 
 
 # === Breathing animation tests ===

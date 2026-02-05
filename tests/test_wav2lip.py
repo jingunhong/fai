@@ -140,7 +140,7 @@ def test_wav2lip_generate_frames_runs_subprocess(
         ),
         patch("fai.motion.wav2lip.subprocess.run") as mock_run,
         patch("fai.motion.wav2lip.cv2.imwrite"),
-        patch("fai.motion.wav2lip.cv2.VideoCapture") as mock_cap,
+        patch("fai.motion.backend.cv2.VideoCapture") as mock_cap,
     ):
         mock_run.return_value = MagicMock(returncode=0)
         mock_cap_instance = MagicMock()
@@ -185,7 +185,7 @@ def test_wav2lip_generate_frames_reads_output_video(
         ),
         patch("fai.motion.wav2lip.subprocess.run", side_effect=create_output_video),
         patch("fai.motion.wav2lip.cv2.imwrite"),
-        patch("fai.motion.wav2lip.cv2.VideoCapture") as mock_cap,
+        patch("fai.motion.backend.cv2.VideoCapture") as mock_cap,
     ):
         # Simulate video with 3 frames
         mock_cap_instance = MagicMock()

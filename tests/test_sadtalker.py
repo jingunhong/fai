@@ -186,7 +186,7 @@ def test_sadtalker_generate_frames_finds_output_video(
         patch("fai.motion.sadtalker.subprocess.run", side_effect=create_output_video),
         patch("fai.motion.sadtalker.cv2.imwrite"),
         patch("fai.motion.sadtalker._write_audio_wav"),
-        patch("fai.motion.sadtalker.cv2.VideoCapture") as mock_cap,
+        patch("fai.motion.backend.cv2.VideoCapture") as mock_cap,
     ):
         mock_cap_instance = MagicMock()
         mock_cap_instance.read.side_effect = [
@@ -267,14 +267,14 @@ def test_sadtalker_generate_frames_no_output_video(
         assert len(frames) == 0
 
 
-def test_sadtalker_read_video_frames_timestamps(
-    tmp_path: Path, sample_image: np.ndarray
-) -> None:
-    """Verify _read_video_frames generates correct timestamps."""
+def test_read_video_frames_timestamps(tmp_path: Path, sample_image: np.ndarray) -> None:
+    """Verify read_video_frames generates correct timestamps."""
+    from fai.motion.backend import read_video_frames
+
     video_path = tmp_path / "test.mp4"
     video_path.touch()
 
-    with patch("fai.motion.sadtalker.cv2.VideoCapture") as mock_cap:
+    with patch("fai.motion.backend.cv2.VideoCapture") as mock_cap:
         mock_cap_instance = MagicMock()
         mock_cap_instance.read.side_effect = [
             (True, sample_image.copy()),
@@ -284,8 +284,7 @@ def test_sadtalker_read_video_frames_timestamps(
         ]
         mock_cap.return_value = mock_cap_instance
 
-        backend = SadTalkerBackend()
-        frames = list(backend._read_video_frames(video_path, fps=30))
+        frames = list(read_video_frames(video_path, fps=30))
 
         assert len(frames) == 3
         assert frames[0].timestamp_ms == 0
