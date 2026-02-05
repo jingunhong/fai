@@ -818,3 +818,126 @@ def test_run_conversation_stream_maintains_history(
         "role": "assistant",
         "content": "Response to First",
     }
+
+
+# =============================================================================
+# Streaming timeout tests
+# =============================================================================
+
+
+def test_generate_response_stream_passes_timeout_to_openai_client(
+    mock_openai_client_stream: MagicMock,
+) -> None:
+    """Verify generate_response_stream passes timeout to OpenAI client."""
+    with patch(
+        "fai.dialogue.generate.OpenAI", return_value=mock_openai_client_stream
+    ) as mock_cls:
+        list(generate_response_stream("Hello", [], timeout=30.0))
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+def test_generate_response_stream_no_timeout_omits_from_client(
+    mock_openai_client_stream: MagicMock,
+) -> None:
+    """Verify generate_response_stream omits timeout when None."""
+    with patch(
+        "fai.dialogue.generate.OpenAI", return_value=mock_openai_client_stream
+    ) as mock_cls:
+        list(generate_response_stream("Hello", [], timeout=None))
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
+
+
+def test_generate_response_stream_claude_passes_timeout() -> None:
+    """Verify Claude streaming passes timeout to client constructor."""
+    mock_stream = MagicMock()
+    mock_stream.text_stream = iter(["Hello"])
+
+    mock_client = MagicMock()
+    mock_client.messages.stream.return_value.__enter__ = MagicMock(
+        return_value=mock_stream
+    )
+    mock_client.messages.stream.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("fai.dialogue.generate.Anthropic", return_value=mock_client) as mock_cls:
+        list(generate_response_stream("Hello", [], backend="claude", timeout=45.0))
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 45.0
+
+
+def test_synthesize_stream_passes_timeout_to_elevenlabs_client(
+    mock_elevenlabs_stream: MagicMock,
+) -> None:
+    """Verify synthesize_stream passes timeout to ElevenLabs client."""
+    with patch(
+        "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_stream
+    ) as mock_cls:
+        list(synthesize_stream("Hello", backend="elevenlabs", timeout=30.0))
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+def test_synthesize_stream_no_timeout_omits_from_elevenlabs_client(
+    mock_elevenlabs_stream: MagicMock,
+) -> None:
+    """Verify synthesize_stream omits timeout when None for ElevenLabs."""
+    with patch(
+        "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_stream
+    ) as mock_cls:
+        list(synthesize_stream("Hello", backend="elevenlabs", timeout=None))
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate_stream")
+@patch("fai.orchestrator.loop.play_audio_stream")
+@patch("fai.orchestrator.loop.synthesize_stream")
+@patch("fai.orchestrator.loop.generate_response_stream")
+@patch("builtins.input")
+def test_run_conversation_stream_passes_timeout(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    sample_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify timeout is passed through in streaming conversation."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = iter([TextChunk(text="Hi", is_final=True)])
+    mock_synthesize.return_value = iter(
+        [
+            AudioChunk(
+                samples=np.zeros(16000, dtype=np.float32),
+                sample_rate=16000,
+                is_final=True,
+            )
+        ]
+    )
+    mock_play.return_value = sample_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation_stream(mock_face_path, text_mode=True, timeout=30.0)
+
+    # Verify timeout was passed to generate_response_stream
+    call_kwargs = mock_generate.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+    # Verify timeout was passed to synthesize_stream
+    call_kwargs = mock_synthesize.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0

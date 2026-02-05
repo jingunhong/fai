@@ -93,6 +93,12 @@ def main() -> None:
         help="Use streaming mode for low-latency response (no lip-sync, no recording)",
     )
     parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Timeout in seconds for API calls (default: no custom timeout)",
+    )
+    parser.add_argument(
         "--log-level",
         type=str,
         choices=list(LOG_LEVEL_MAP.keys()),
@@ -144,6 +150,11 @@ def main() -> None:
         print(f"Error: {validation_result.error_message}", file=sys.stderr)
         sys.exit(1)
 
+    # Validate timeout is positive
+    if args.timeout is not None and args.timeout <= 0:
+        print("Error: --timeout must be a positive number", file=sys.stderr)
+        sys.exit(1)
+
     # Validate model matches dialogue backend
     if args.model is not None:
         openai_models = {"gpt-4o", "gpt-4o-mini"}
@@ -184,6 +195,7 @@ def main() -> None:
                 tts_backend=args.tts,
                 voice=args.voice,
                 model=args.model,
+                timeout=args.timeout,
             )
         else:
             run_conversation(
@@ -196,4 +208,5 @@ def main() -> None:
                 record=args.record,
                 output_dir=args.output_dir,
                 model=args.model,
+                timeout=args.timeout,
             )

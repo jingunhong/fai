@@ -74,8 +74,10 @@ def test_run_conversation_text_mode_single_turn(
     first_call = mock_generate.call_args_list[0]
     assert first_call[0][0] == "Hello"  # user_text
 
-    # Verify synthesize was called with response text, backend, and voice
-    mock_synthesize.assert_called_with("Hi there!", backend="openai", voice=None)
+    # Verify synthesize was called with response text, backend, voice, and timeout
+    mock_synthesize.assert_called_with(
+        "Hi there!", backend="openai", voice=None, timeout=None
+    )
 
 
 @patch("fai.orchestrator.loop.display")
@@ -110,6 +112,7 @@ def test_run_conversation_maintains_history(
         history: list[dict[str, str]],
         backend: str = "openai",
         model: str | None = None,
+        timeout: float | None = None,
     ) -> DialogueResponse:
         captured_histories.append(list(history))  # Copy the history
         if len(captured_histories) == 1:
@@ -601,3 +604,137 @@ def test_run_conversation_passes_claude_model_to_generate_response(
     call_kwargs = mock_generate.call_args[1]
     assert call_kwargs.get("backend") == "claude"
     assert call_kwargs.get("model") == "claude-haiku"
+
+
+# Tests for timeout parameter
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("builtins.input")
+def test_run_conversation_passes_timeout_to_generate_response(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify timeout is passed to generate_response."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=True, timeout=30.0)
+
+    mock_generate.assert_called_once()
+    call_kwargs = mock_generate.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("builtins.input")
+def test_run_conversation_passes_timeout_to_synthesize(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify timeout is passed to synthesize."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=True, timeout=30.0)
+
+    mock_synthesize.assert_called_once()
+    call_kwargs = mock_synthesize.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("builtins.input")
+def test_run_conversation_default_timeout_is_none(
+    mock_input: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify default timeout is None."""
+    mock_input.side_effect = ["Hello", KeyboardInterrupt]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=True)
+
+    mock_generate.assert_called_once()
+    call_kwargs = mock_generate.call_args[1]
+    assert call_kwargs.get("timeout") is None
+
+    mock_synthesize.assert_called_once()
+    call_kwargs = mock_synthesize.call_args[1]
+    assert call_kwargs.get("timeout") is None
+
+
+@patch("fai.orchestrator.loop.display")
+@patch("fai.orchestrator.loop.animate")
+@patch("fai.orchestrator.loop.play_audio")
+@patch("fai.orchestrator.loop.synthesize")
+@patch("fai.orchestrator.loop.generate_response")
+@patch("fai.orchestrator.loop.transcribe")
+@patch("fai.orchestrator.loop.record_audio")
+def test_run_conversation_passes_timeout_to_transcribe(
+    mock_record: MagicMock,
+    mock_transcribe: MagicMock,
+    mock_generate: MagicMock,
+    mock_synthesize: MagicMock,
+    mock_play_audio: MagicMock,
+    mock_animate: MagicMock,
+    mock_display: MagicMock,
+    mock_face_path: Path,
+    mock_audio: AudioData,
+    mock_frame: VideoFrame,
+) -> None:
+    """Verify timeout is passed to transcribe in voice mode."""
+    mock_record.return_value = mock_audio
+    mock_transcribe.side_effect = [
+        TranscriptResult(text="Hello"),
+        KeyboardInterrupt,
+    ]
+    mock_generate.return_value = DialogueResponse(text="Hi!")
+    mock_synthesize.return_value = mock_audio
+    mock_animate.return_value = iter([mock_frame])
+
+    run_conversation(mock_face_path, text_mode=False, timeout=30.0)
+
+    # transcribe is called twice (once for the turn, once before interrupt)
+    assert mock_transcribe.call_count == 2
+    call_kwargs = mock_transcribe.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0

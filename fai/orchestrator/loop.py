@@ -42,6 +42,7 @@ def run_conversation(
     record: bool = False,
     output_dir: Path | None = None,
     model: DialogueModel | None = None,
+    timeout: float | None = None,
 ) -> None:
     """Run the main conversation loop.
 
@@ -63,6 +64,7 @@ def run_conversation(
         record: If True, save session audio/video to files.
         output_dir: Directory for recordings (default: ./recordings).
         model: Specific LLM model to use. If None, uses the default for the backend.
+        timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -96,7 +98,7 @@ def run_conversation(
     try:
         while True:
             # Step 1: Get user input
-            user_text, user_audio = _get_user_input(text_mode)
+            user_text, user_audio = _get_user_input(text_mode, timeout=timeout)
             if not user_text:
                 logger.debug("Empty user input, skipping turn")
                 continue
@@ -110,7 +112,11 @@ def run_conversation(
             # Step 2: Generate LLM response
             logger.debug("Generating LLM response")
             response = generate_response(
-                user_text, history, backend=dialogue_backend, model=model
+                user_text,
+                history,
+                backend=dialogue_backend,
+                model=model,
+                timeout=timeout,
             )
             logger.debug(
                 "LLM response: %s",
@@ -127,7 +133,9 @@ def run_conversation(
 
             # Step 3: Synthesize speech
             logger.debug("Synthesizing speech")
-            audio = synthesize(response.text, backend=tts_backend, voice=voice)
+            audio = synthesize(
+                response.text, backend=tts_backend, voice=voice, timeout=timeout
+            )
             logger.debug("Synthesized %d audio samples", len(audio.samples))
 
             # Step 4: Play audio (non-blocking so animation can start)
@@ -166,17 +174,21 @@ def run_conversation(
                 "tts_backend": tts_backend,
                 "voice": voice,
                 "model": model,
+                "timeout": timeout,
             }
             metadata_path = recorder.finalize(metadata)
             logger.info("Session saved to: %s", metadata_path)
             print(f"Session saved to: {metadata_path}")
 
 
-def _get_user_input(text_mode: bool) -> tuple[str, AudioData | None]:
+def _get_user_input(
+    text_mode: bool, timeout: float | None = None
+) -> tuple[str, AudioData | None]:
     """Get user input from keyboard or microphone.
 
     Args:
         text_mode: If True, read from keyboard. If False, record from microphone.
+        timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Returns:
         Tuple of (user text, optional AudioData for voice mode).
@@ -189,7 +201,7 @@ def _get_user_input(text_mode: bool) -> tuple[str, AudioData | None]:
     else:
         print(f"Listening for {DEFAULT_RECORD_DURATION} seconds...")
         audio = record_audio(DEFAULT_RECORD_DURATION)
-        result = transcribe(audio)
+        result = transcribe(audio, timeout=timeout)
         return result.text.strip(), audio
 
 
@@ -200,6 +212,7 @@ def run_conversation_stream(
     tts_backend: TTSBackend = "openai",
     voice: str | None = None,
     model: DialogueModel | None = None,
+    timeout: float | None = None,
 ) -> None:
     """Run the streaming conversation loop with low-latency response.
 
@@ -217,6 +230,7 @@ def run_conversation_stream(
         tts_backend: TTS backend to use for speech synthesis.
         voice: Voice to use for TTS.
         model: Specific LLM model to use. If None, uses the default for the backend.
+        timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -241,7 +255,7 @@ def run_conversation_stream(
     try:
         while True:
             # Step 1: Get user input
-            user_text, _ = _get_user_input(text_mode)
+            user_text, _ = _get_user_input(text_mode, timeout=timeout)
             if not user_text:
                 logger.debug("Empty user input, skipping turn")
                 continue
@@ -255,7 +269,7 @@ def run_conversation_stream(
             # Step 2: Stream LLM response and collect full text
             logger.debug("Streaming LLM response")
             response_text = _stream_dialogue_response(
-                user_text, history, dialogue_backend, model
+                user_text, history, dialogue_backend, model, timeout=timeout
             )
             logger.debug("Streaming response complete")
 
@@ -266,7 +280,9 @@ def run_conversation_stream(
 
             # Step 3: Stream TTS and animation
             logger.debug("Streaming TTS and animation")
-            _stream_tts_and_animate(face_image, response_text, tts_backend, voice)
+            _stream_tts_and_animate(
+                face_image, response_text, tts_backend, voice, timeout=timeout
+            )
 
     except KeyboardInterrupt:
         logger.info("Streaming conversation ended by user")
@@ -278,6 +294,7 @@ def _stream_dialogue_response(
     history: list[dict[str, str]],
     backend: DialogueBackend,
     model: DialogueModel | None = None,
+    timeout: float | None = None,
 ) -> str:
     """Stream dialogue response and print chunks as they arrive.
 
@@ -286,6 +303,7 @@ def _stream_dialogue_response(
         history: Conversation history.
         backend: Dialogue backend to use.
         model: Specific LLM model to use. If None, uses the default for the backend.
+        timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
 
     Returns:
         Complete response text.
@@ -294,7 +312,7 @@ def _stream_dialogue_response(
 
     response_parts: list[str] = []
     for chunk in generate_response_stream(
-        user_text, history, backend=backend, model=model
+        user_text, history, backend=backend, model=model, timeout=timeout
     ):
         if chunk.text:
             print(chunk.text, end="", flush=True)
@@ -309,6 +327,7 @@ def _stream_tts_and_animate(
     text: str,
     tts_backend: TTSBackend,
     voice: str | None,
+    timeout: float | None = None,
 ) -> None:
     """Stream TTS synthesis and animate with audio chunks.
 
@@ -317,11 +336,14 @@ def _stream_tts_and_animate(
         text: Text to synthesize.
         tts_backend: TTS backend to use.
         voice: Voice to use for TTS.
+        timeout: Timeout in seconds for API calls. If None, uses SDK defaults.
     """
     # Collect audio chunks for both playback and animation
     audio_chunks: list[AudioChunk] = []
 
-    for chunk in synthesize_stream(text, backend=tts_backend, voice=voice):
+    for chunk in synthesize_stream(
+        text, backend=tts_backend, voice=voice, timeout=timeout
+    ):
         audio_chunks.append(chunk)
 
     # Play audio (non-blocking so animation can run)

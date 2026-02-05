@@ -60,6 +60,7 @@ def generate_response(
     history: list[dict[str, str]],
     backend: DialogueBackend = "openai",
     model: DialogueModel | None = None,
+    timeout: float | None = None,
 ) -> DialogueResponse:
     """Generate an LLM response given user text and conversation history.
 
@@ -69,6 +70,7 @@ def generate_response(
             Role is either "user" or "assistant".
         backend: Which LLM backend to use ("openai" or "claude").
         model: Specific model to use. If None, uses the default for the backend.
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Returns:
         DialogueResponse containing the generated text.
@@ -93,17 +95,23 @@ def generate_response(
     )
 
     if backend == "claude":
-        return _generate_with_claude(user_text, history, model_id)
+        return _generate_with_claude(user_text, history, model_id, timeout=timeout)
     else:
-        return _generate_with_openai(user_text, history, model_id)
+        return _generate_with_openai(user_text, history, model_id, timeout=timeout)
 
 
 def _generate_with_openai(
-    user_text: str, history: list[dict[str, str]], model_id: str
+    user_text: str,
+    history: list[dict[str, str]],
+    model_id: str,
+    timeout: float | None = None,
 ) -> DialogueResponse:
     """Generate response using OpenAI."""
     logger.debug("Calling OpenAI API with %d history messages", len(history))
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": SYSTEM_PROMPT}
@@ -128,11 +136,17 @@ def _generate_with_openai(
 
 
 def _generate_with_claude(
-    user_text: str, history: list[dict[str, str]], model_id: str
+    user_text: str,
+    history: list[dict[str, str]],
+    model_id: str,
+    timeout: float | None = None,
 ) -> DialogueResponse:
     """Generate response using Anthropic Claude."""
     logger.debug("Calling Claude API with %d history messages", len(history))
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = Anthropic(
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     messages: list[MessageParam] = []
     for msg in history:
@@ -161,6 +175,7 @@ def generate_response_stream(
     history: list[dict[str, str]],
     backend: DialogueBackend = "openai",
     model: DialogueModel | None = None,
+    timeout: float | None = None,
 ) -> Iterator[TextChunk]:
     """Generate streaming LLM response, yielding text chunks as they arrive.
 
@@ -169,6 +184,7 @@ def generate_response_stream(
         history: Previous conversation turns, each with "role" and "content" keys.
         backend: Which LLM backend to use ("openai" or "claude").
         model: Specific model to use. If None, uses the default for the backend.
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Yields:
         TextChunk objects containing partial response text.
@@ -189,16 +205,26 @@ def generate_response_stream(
     model_id = MODEL_IDS[resolved_model]
 
     if backend == "claude":
-        yield from _generate_stream_with_claude(user_text, history, model_id)
+        yield from _generate_stream_with_claude(
+            user_text, history, model_id, timeout=timeout
+        )
     else:
-        yield from _generate_stream_with_openai(user_text, history, model_id)
+        yield from _generate_stream_with_openai(
+            user_text, history, model_id, timeout=timeout
+        )
 
 
 def _generate_stream_with_openai(
-    user_text: str, history: list[dict[str, str]], model_id: str
+    user_text: str,
+    history: list[dict[str, str]],
+    model_id: str,
+    timeout: float | None = None,
 ) -> Iterator[TextChunk]:
     """Generate streaming response using OpenAI."""
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": SYSTEM_PROMPT}
@@ -225,10 +251,16 @@ def _generate_stream_with_openai(
 
 
 def _generate_stream_with_claude(
-    user_text: str, history: list[dict[str, str]], model_id: str
+    user_text: str,
+    history: list[dict[str, str]],
+    model_id: str,
+    timeout: float | None = None,
 ) -> Iterator[TextChunk]:
     """Generate streaming response using Anthropic Claude."""
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = Anthropic(
+        api_key=os.environ.get("ANTHROPIC_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     messages: list[MessageParam] = []
     for msg in history:

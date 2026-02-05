@@ -178,3 +178,48 @@ def test_record_audio_with_fractional_duration() -> None:
     mock_rec.assert_called_once()
     call_args = mock_rec.call_args
     assert call_args[0][0] == 8000  # Expected sample count
+
+
+# Tests for timeout parameter
+
+
+def test_transcribe_passes_timeout_to_openai_client(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe passes timeout to OpenAI client constructor."""
+    with patch(
+        "fai.perception.transcribe.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        transcribe(sample_audio, timeout=30.0)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+def test_transcribe_no_timeout_omits_from_client(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe omits timeout when None."""
+    with patch(
+        "fai.perception.transcribe.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        transcribe(sample_audio, timeout=None)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
+
+
+def test_transcribe_default_timeout_is_none(
+    mock_openai_client: MagicMock, sample_audio: AudioData
+) -> None:
+    """Verify transcribe default timeout is None (omitted from client)."""
+    with patch(
+        "fai.perception.transcribe.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        transcribe(sample_audio)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs

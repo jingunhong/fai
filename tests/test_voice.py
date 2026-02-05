@@ -530,3 +530,64 @@ def test_stop_audio_calls_sounddevice_stop() -> None:
         stop_audio()
 
     mock_sd.stop.assert_called_once()
+
+
+# =============================================================================
+# Tests for timeout parameter
+# =============================================================================
+
+
+def test_synthesize_passes_timeout_to_openai_client(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify synthesize passes timeout to OpenAI client constructor."""
+    with patch(
+        "fai.voice.synthesize.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        synthesize("Hello", timeout=30.0)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+def test_synthesize_passes_timeout_to_elevenlabs_client(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify synthesize passes timeout to ElevenLabs client constructor."""
+    with patch(
+        "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client
+    ) as mock_cls:
+        synthesize("Hello", backend="elevenlabs", timeout=45.0)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 45.0
+
+
+def test_synthesize_no_timeout_omits_from_openai_client(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify synthesize omits timeout when None for OpenAI."""
+    with patch(
+        "fai.voice.synthesize.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        synthesize("Hello", timeout=None)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
+
+
+def test_synthesize_no_timeout_omits_from_elevenlabs_client(
+    mock_elevenlabs_client: MagicMock,
+) -> None:
+    """Verify synthesize omits timeout when None for ElevenLabs."""
+    with patch(
+        "fai.voice.synthesize.ElevenLabs", return_value=mock_elevenlabs_client
+    ) as mock_cls:
+        synthesize("Hello", backend="elevenlabs", timeout=None)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs

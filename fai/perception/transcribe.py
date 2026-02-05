@@ -19,11 +19,12 @@ load_dotenv()
 
 
 @retry_with_backoff()
-def transcribe(audio: AudioData) -> TranscriptResult:
+def transcribe(audio: AudioData, timeout: float | None = None) -> TranscriptResult:
     """Transcribe audio to text using OpenAI Whisper API.
 
     Args:
         audio: AudioData containing samples and sample rate.
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Returns:
         TranscriptResult containing the transcribed text.
@@ -40,7 +41,10 @@ def transcribe(audio: AudioData) -> TranscriptResult:
         len(audio.samples),
         audio.sample_rate,
     )
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     # Convert AudioData to WAV bytes for API
     wav_bytes = _audio_to_wav_bytes(audio)

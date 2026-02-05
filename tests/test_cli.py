@@ -91,6 +91,7 @@ def test_cli_passes_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        timeout=None,
     )
 
 
@@ -118,6 +119,7 @@ def test_cli_passes_text_mode_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        timeout=None,
     )
 
 
@@ -164,6 +166,7 @@ def test_cli_passes_dialogue_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        timeout=None,
     )
 
 
@@ -210,6 +213,7 @@ def test_cli_passes_tts_backend_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        timeout=None,
     )
 
 
@@ -333,6 +337,7 @@ def test_cli_passes_voice_to_run_conversation(
         record=False,
         output_dir=None,
         model=None,
+        timeout=None,
     )
 
 
@@ -676,6 +681,7 @@ def test_cli_passes_model_to_run_conversation(
         record=False,
         output_dir=None,
         model="gpt-4o-mini",
+        timeout=None,
     )
 
 
@@ -730,6 +736,7 @@ def test_cli_passes_model_to_run_conversation_stream(
         tts_backend="openai",
         voice=None,
         model="claude-haiku",
+        timeout=None,
     )
 
 
@@ -874,3 +881,124 @@ def test_cli_model_claude_haiku_with_claude_backend(
     _, kwargs = mock_run.call_args
     assert kwargs.get("model") == "claude-haiku"
     assert kwargs.get("dialogue_backend") == "claude"
+
+
+# Tests for --timeout flag
+
+
+def test_cli_passes_timeout_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --timeout is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--timeout", "30"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("timeout") == 30.0
+
+
+def test_cli_default_timeout_is_none(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify default timeout is None."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("timeout") is None
+
+
+def test_cli_passes_timeout_to_run_conversation_stream(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --timeout is passed to run_conversation_stream."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--stream", "--timeout", "60"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation_stream") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("timeout") == 60.0
+
+
+def test_cli_timeout_fractional_value(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --timeout accepts fractional seconds."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--timeout", "10.5"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("timeout") == 10.5
+
+
+def test_cli_timeout_zero_exits_with_error(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    valid_api_keys: ValidationResult,
+) -> None:
+    """Verify --timeout 0 exits with error."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--timeout", "0"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "--timeout must be a positive number" in captured.err
+
+
+def test_cli_timeout_negative_exits_with_error(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    valid_api_keys: ValidationResult,
+) -> None:
+    """Verify --timeout with negative value exits with error."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--timeout", "-5"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "--timeout must be a positive number" in captured.err

@@ -80,6 +80,7 @@ def synthesize(
     text: str,
     backend: TTSBackend = "openai",
     voice: str | None = None,
+    timeout: float | None = None,
 ) -> AudioData:
     """Synthesize speech audio from text using OpenAI or ElevenLabs TTS API.
 
@@ -90,6 +91,7 @@ def synthesize(
                nova, sage, shimmer. For ElevenLabs: rachel, adam, antoni, bella,
                domi, elli, josh, arnold. Defaults to "alloy" for OpenAI and
                "rachel" for ElevenLabs.
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Returns:
         AudioData containing the synthesized audio samples and sample rate.
@@ -105,21 +107,24 @@ def synthesize(
     logger.debug("Synthesizing speech using %s backend", backend)
 
     if backend == "elevenlabs":
-        return _synthesize_with_elevenlabs(text, voice)
+        return _synthesize_with_elevenlabs(text, voice, timeout=timeout)
     elif backend == "openai":
-        return _synthesize_with_openai(text, voice)
+        return _synthesize_with_openai(text, voice, timeout=timeout)
     else:
         raise ValueError(
             f"Invalid backend: {backend}. Must be 'openai' or 'elevenlabs'."
         )
 
 
-def _synthesize_with_openai(text: str, voice: str | None = None) -> AudioData:
+def _synthesize_with_openai(
+    text: str, voice: str | None = None, timeout: float | None = None
+) -> AudioData:
     """Synthesize speech using OpenAI TTS API.
 
     Args:
         text: The text to convert to speech.
         voice: Voice name to use. Defaults to "alloy".
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Raises:
         ValueError: If voice is not a valid OpenAI voice.
@@ -133,7 +138,10 @@ def _synthesize_with_openai(text: str, voice: str | None = None) -> AudioData:
         )
 
     logger.debug("Calling OpenAI TTS API with voice '%s'", selected_voice)
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     response = client.audio.speech.create(
         model=DEFAULT_OPENAI_MODEL,
@@ -149,12 +157,15 @@ def _synthesize_with_openai(text: str, voice: str | None = None) -> AudioData:
     return AudioData(samples=samples, sample_rate=sample_rate)
 
 
-def _synthesize_with_elevenlabs(text: str, voice: str | None = None) -> AudioData:
+def _synthesize_with_elevenlabs(
+    text: str, voice: str | None = None, timeout: float | None = None
+) -> AudioData:
     """Synthesize speech using ElevenLabs TTS API.
 
     Args:
         text: The text to convert to speech.
         voice: Voice name to use. Defaults to "rachel".
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Raises:
         ValueError: If voice is not a valid ElevenLabs voice.
@@ -169,7 +180,10 @@ def _synthesize_with_elevenlabs(text: str, voice: str | None = None) -> AudioDat
 
     voice_id = ELEVENLABS_VOICE_IDS[selected_voice]
     logger.debug("Calling ElevenLabs TTS API with voice '%s'", selected_voice)
-    client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+    client = ElevenLabs(
+        api_key=os.environ.get("ELEVENLABS_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     # Generate audio using ElevenLabs
     audio_generator = client.text_to_speech.convert(
@@ -225,6 +239,7 @@ def synthesize_stream(
     text: str,
     backend: TTSBackend = "openai",
     voice: str | None = None,
+    timeout: float | None = None,
 ) -> Iterator[AudioChunk]:
     """Synthesize speech audio from text, yielding audio chunks as available.
 
@@ -235,6 +250,7 @@ def synthesize_stream(
         text: The text to convert to speech.
         backend: Which TTS backend to use ("openai" or "elevenlabs").
         voice: Voice to use. Defaults to "alloy" for OpenAI, "rachel" for ElevenLabs.
+        timeout: Timeout in seconds for the API call. If None, uses SDK default.
 
     Yields:
         AudioChunk objects containing audio samples and metadata.
@@ -248,9 +264,9 @@ def synthesize_stream(
         raise ValueError("text cannot be empty")
 
     if backend == "elevenlabs":
-        yield from _synthesize_stream_with_elevenlabs(text, voice)
+        yield from _synthesize_stream_with_elevenlabs(text, voice, timeout=timeout)
     elif backend == "openai":
-        yield from _synthesize_stream_with_openai(text, voice)
+        yield from _synthesize_stream_with_openai(text, voice, timeout=timeout)
     else:
         raise ValueError(
             f"Invalid backend: {backend}. Must be 'openai' or 'elevenlabs'."
@@ -258,7 +274,7 @@ def synthesize_stream(
 
 
 def _synthesize_stream_with_openai(
-    text: str, voice: str | None = None
+    text: str, voice: str | None = None, timeout: float | None = None
 ) -> Iterator[AudioChunk]:
     """Synthesize streaming speech using OpenAI TTS API.
 
@@ -273,7 +289,10 @@ def _synthesize_stream_with_openai(
             f"Must be one of: {', '.join(valid_voices)}"
         )
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     # OpenAI TTS doesn't support streaming, so we get the full response
     response = client.audio.speech.create(
@@ -291,7 +310,7 @@ def _synthesize_stream_with_openai(
 
 
 def _synthesize_stream_with_elevenlabs(
-    text: str, voice: str | None = None
+    text: str, voice: str | None = None, timeout: float | None = None
 ) -> Iterator[AudioChunk]:
     """Synthesize streaming speech using ElevenLabs TTS API.
 
@@ -307,7 +326,10 @@ def _synthesize_stream_with_elevenlabs(
         )
 
     voice_id = ELEVENLABS_VOICE_IDS[selected_voice]
-    client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+    client = ElevenLabs(
+        api_key=os.environ.get("ELEVENLABS_API_KEY"),
+        **({"timeout": timeout} if timeout is not None else {}),
+    )
 
     # Generate audio using ElevenLabs streaming
     audio_generator = client.text_to_speech.convert(

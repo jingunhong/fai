@@ -394,3 +394,62 @@ def test_generate_response_model_none_uses_default_for_claude(
 
     call_args = mock_anthropic_client.messages.create.call_args
     assert call_args.kwargs["model"] == "claude-sonnet-4-20250514"
+
+
+# Tests for timeout parameter
+
+
+def test_generate_response_passes_timeout_to_openai_client(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response passes timeout to OpenAI client constructor."""
+    with patch(
+        "fai.dialogue.generate.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        generate_response("Hello", [], timeout=30.0)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 30.0
+
+
+def test_generate_response_passes_timeout_to_claude_client(
+    mock_anthropic_client: MagicMock,
+) -> None:
+    """Verify generate_response passes timeout to Anthropic client constructor."""
+    with patch(
+        "fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client
+    ) as mock_cls:
+        generate_response("Hello", [], backend="claude", timeout=45.0)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert call_kwargs.get("timeout") == 45.0
+
+
+def test_generate_response_no_timeout_omits_from_openai_client(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response omits timeout when None for OpenAI."""
+    with patch(
+        "fai.dialogue.generate.OpenAI", return_value=mock_openai_client
+    ) as mock_cls:
+        generate_response("Hello", [], timeout=None)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
+
+
+def test_generate_response_no_timeout_omits_from_claude_client(
+    mock_anthropic_client: MagicMock,
+) -> None:
+    """Verify generate_response omits timeout when None for Anthropic."""
+    with patch(
+        "fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client
+    ) as mock_cls:
+        generate_response("Hello", [], backend="claude", timeout=None)
+
+    mock_cls.assert_called_once()
+    call_kwargs = mock_cls.call_args[1]
+    assert "timeout" not in call_kwargs
