@@ -1,11 +1,23 @@
 """Tests for the CLI module."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from fai import cli
+from fai.validation import ValidationResult
+
+
+@pytest.fixture  # type: ignore[misc]
+def valid_api_keys() -> ValidationResult:
+    """Return a valid API keys validation result."""
+    return ValidationResult(
+        is_valid=True,
+        missing_keys=[],
+        error_message="",
+    )
 
 
 def test_main_exists() -> None:
@@ -55,13 +67,16 @@ def test_cli_missing_face_image(capsys: pytest.CaptureFixture[str]) -> None:
     assert "Face image not found" in captured.err
 
 
-def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_backend_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --backend is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--backend", "none"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -78,13 +93,16 @@ def test_cli_passes_backend_to_run_conversation(tmp_path: Path) -> None:
     )
 
 
-def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_text_mode_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --text flag is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--text"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -101,13 +119,16 @@ def test_cli_passes_text_mode_to_run_conversation(tmp_path: Path) -> None:
     )
 
 
-def test_cli_default_backend_is_auto(tmp_path: Path) -> None:
+def test_cli_default_backend_is_auto(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default backend is 'auto'."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -117,13 +138,16 @@ def test_cli_default_backend_is_auto(tmp_path: Path) -> None:
     assert kwargs.get("backend") == "auto"
 
 
-def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_dialogue_backend_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --dialogue is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--dialogue", "claude"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -140,13 +164,16 @@ def test_cli_passes_dialogue_backend_to_run_conversation(tmp_path: Path) -> None
     )
 
 
-def test_cli_default_dialogue_backend_is_openai(tmp_path: Path) -> None:
+def test_cli_default_dialogue_backend_is_openai(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default dialogue backend is 'openai'."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -156,13 +183,16 @@ def test_cli_default_dialogue_backend_is_openai(tmp_path: Path) -> None:
     assert kwargs.get("dialogue_backend") == "openai"
 
 
-def test_cli_passes_tts_backend_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_tts_backend_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --tts is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--tts", "elevenlabs"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -179,13 +209,16 @@ def test_cli_passes_tts_backend_to_run_conversation(tmp_path: Path) -> None:
     )
 
 
-def test_cli_default_tts_backend_is_openai(tmp_path: Path) -> None:
+def test_cli_default_tts_backend_is_openai(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default TTS backend is 'openai'."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -195,13 +228,16 @@ def test_cli_default_tts_backend_is_openai(tmp_path: Path) -> None:
     assert kwargs.get("tts_backend") == "openai"
 
 
-def test_cli_passes_record_flag_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_record_flag_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --record flag is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--record"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -211,7 +247,9 @@ def test_cli_passes_record_flag_to_run_conversation(tmp_path: Path) -> None:
     assert kwargs.get("record") is True
 
 
-def test_cli_passes_output_dir_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_output_dir_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --output-dir is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
@@ -219,6 +257,7 @@ def test_cli_passes_output_dir_to_run_conversation(tmp_path: Path) -> None:
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--output-dir", str(output_dir)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -228,13 +267,16 @@ def test_cli_passes_output_dir_to_run_conversation(tmp_path: Path) -> None:
     assert kwargs.get("output_dir") == output_dir
 
 
-def test_cli_default_record_is_false(tmp_path: Path) -> None:
+def test_cli_default_record_is_false(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default record is False."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -244,13 +286,16 @@ def test_cli_default_record_is_false(tmp_path: Path) -> None:
     assert kwargs.get("record") is False
 
 
-def test_cli_default_output_dir_is_none(tmp_path: Path) -> None:
+def test_cli_default_output_dir_is_none(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default output_dir is None."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -260,13 +305,16 @@ def test_cli_default_output_dir_is_none(tmp_path: Path) -> None:
     assert kwargs.get("output_dir") is None
 
 
-def test_cli_passes_voice_to_run_conversation(tmp_path: Path) -> None:
+def test_cli_passes_voice_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --voice is passed to run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--voice", "echo"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -283,13 +331,16 @@ def test_cli_passes_voice_to_run_conversation(tmp_path: Path) -> None:
     )
 
 
-def test_cli_default_voice_is_none(tmp_path: Path) -> None:
+def test_cli_default_voice_is_none(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default voice is None."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -329,7 +380,9 @@ def test_cli_list_voices_elevenlabs(capsys: pytest.CaptureFixture[str]) -> None:
     assert "adam" in captured.out
 
 
-def test_cli_voice_with_tts_backend(tmp_path: Path) -> None:
+def test_cli_voice_with_tts_backend(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --voice works with --tts backend."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
@@ -339,6 +392,7 @@ def test_cli_voice_with_tts_backend(tmp_path: Path) -> None:
             "sys.argv",
             ["fai", str(face_path), "--tts", "elevenlabs", "--voice", "josh"],
         ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation") as mock_run,
     ):
         cli.main()
@@ -349,13 +403,16 @@ def test_cli_voice_with_tts_backend(tmp_path: Path) -> None:
     assert kwargs.get("voice") == "josh"
 
 
-def test_cli_log_level_default_is_warning(tmp_path: Path) -> None:
+def test_cli_log_level_default_is_warning(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify default log level is 'warning'."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
@@ -364,13 +421,14 @@ def test_cli_log_level_default_is_warning(tmp_path: Path) -> None:
     mock_setup.assert_called_once_with(level="warning")
 
 
-def test_cli_log_level_debug(tmp_path: Path) -> None:
+def test_cli_log_level_debug(tmp_path: Path, valid_api_keys: ValidationResult) -> None:
     """Verify --log-level debug is passed to setup_logging."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--log-level", "debug"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
@@ -379,13 +437,14 @@ def test_cli_log_level_debug(tmp_path: Path) -> None:
     mock_setup.assert_called_once_with(level="debug")
 
 
-def test_cli_log_level_info(tmp_path: Path) -> None:
+def test_cli_log_level_info(tmp_path: Path, valid_api_keys: ValidationResult) -> None:
     """Verify --log-level info is passed to setup_logging."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--log-level", "info"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
@@ -394,13 +453,14 @@ def test_cli_log_level_info(tmp_path: Path) -> None:
     mock_setup.assert_called_once_with(level="info")
 
 
-def test_cli_log_level_error(tmp_path: Path) -> None:
+def test_cli_log_level_error(tmp_path: Path, valid_api_keys: ValidationResult) -> None:
     """Verify --log-level error is passed to setup_logging."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--log-level", "error"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
@@ -409,13 +469,16 @@ def test_cli_log_level_error(tmp_path: Path) -> None:
     mock_setup.assert_called_once_with(level="error")
 
 
-def test_cli_log_level_critical(tmp_path: Path) -> None:
+def test_cli_log_level_critical(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --log-level critical is passed to setup_logging."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--log-level", "critical"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
@@ -442,7 +505,9 @@ def test_cli_log_level_invalid(
     assert "invalid choice" in captured.err
 
 
-def test_cli_log_level_called_before_other_operations(tmp_path: Path) -> None:
+def test_cli_log_level_called_before_other_operations(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify setup_logging is called before run_conversation."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
@@ -452,11 +517,12 @@ def test_cli_log_level_called_before_other_operations(tmp_path: Path) -> None:
     def mock_setup_logging(level: str) -> None:
         call_order.append("setup_logging")
 
-    def mock_run_conversation(*args: object, **kwargs: object) -> None:
+    def mock_run_conversation(*args: Any, **kwargs: Any) -> None:
         call_order.append("run_conversation")
 
     with (
         patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.setup_logging", side_effect=mock_setup_logging),
         patch("fai.cli.run_conversation", side_effect=mock_run_conversation),
     ):
@@ -465,16 +531,114 @@ def test_cli_log_level_called_before_other_operations(tmp_path: Path) -> None:
     assert call_order == ["setup_logging", "run_conversation"]
 
 
-def test_cli_log_level_with_stream_mode(tmp_path: Path) -> None:
+def test_cli_log_level_with_stream_mode(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
     """Verify --log-level works with --stream mode."""
     face_path = tmp_path / "face.jpg"
     face_path.touch()
 
     with (
         patch("sys.argv", ["fai", str(face_path), "--stream", "--log-level", "debug"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
         patch("fai.cli.run_conversation_stream"),
         patch("fai.cli.setup_logging") as mock_setup,
     ):
         cli.main()
 
     mock_setup.assert_called_once_with(level="debug")
+
+
+def test_cli_api_key_validation_called(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify validate_api_keys is called with correct arguments."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--dialogue", "claude", "--tts", "elevenlabs"],
+        ),
+        patch(
+            "fai.cli.validate_api_keys", return_value=valid_api_keys
+        ) as mock_validate,
+        patch("fai.cli.run_conversation"),
+    ):
+        cli.main()
+
+    mock_validate.assert_called_once_with(
+        dialogue_backend="claude",
+        tts_backend="elevenlabs",
+    )
+
+
+def test_cli_api_key_validation_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Verify CLI exits with error when API key validation fails."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    invalid_result = ValidationResult(
+        is_valid=False,
+        missing_keys=["OPENAI_API_KEY"],
+        error_message="Missing required API key(s):\n  • OPENAI_API_KEY",
+    )
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=invalid_result),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Missing required API key(s)" in captured.err
+    assert "OPENAI_API_KEY" in captured.err
+
+
+def test_cli_api_key_validation_default_backends(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify validate_api_keys is called with default backends."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch(
+            "fai.cli.validate_api_keys", return_value=valid_api_keys
+        ) as mock_validate,
+        patch("fai.cli.run_conversation"),
+    ):
+        cli.main()
+
+    mock_validate.assert_called_once_with(
+        dialogue_backend="openai",
+        tts_backend="openai",
+    )
+
+
+def test_cli_api_key_validation_stream_mode(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify validate_api_keys is called in stream mode."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--stream", "--dialogue", "claude"]),
+        patch(
+            "fai.cli.validate_api_keys", return_value=valid_api_keys
+        ) as mock_validate,
+        patch("fai.cli.run_conversation_stream"),
+    ):
+        cli.main()
+
+    mock_validate.assert_called_once_with(
+        dialogue_backend="claude",
+        tts_backend="openai",
+    )

@@ -8,6 +8,7 @@ from pathlib import Path
 from fai.logging import LOG_LEVEL_MAP, setup_logging
 from fai.motion import get_available_backends
 from fai.orchestrator import run_conversation, run_conversation_stream
+from fai.validation import validate_api_keys
 from fai.voice import get_available_voices
 
 
@@ -123,6 +124,15 @@ def main() -> None:
         parser.error("face_image is required")
     if not args.face_image.exists():
         print(f"Error: Face image not found: {args.face_image}", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate required API keys based on selected backends
+    validation_result = validate_api_keys(
+        dialogue_backend=args.dialogue,
+        tts_backend=args.tts,
+    )
+    if not validation_result.is_valid:
+        print(f"Error: {validation_result.error_message}", file=sys.stderr)
         sys.exit(1)
 
     with contextlib.suppress(KeyboardInterrupt):
