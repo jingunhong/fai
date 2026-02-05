@@ -11,18 +11,31 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CLAUDE_MD="$PROJECT_ROOT/CLAUDE.md"
+LOG_DIR="$PROJECT_ROOT/logs"
+LOG_FILE="$LOG_DIR/auto-progress-$(date +%Y%m%d-%H%M%S).log"
 
 MAX_ITEMS="${1:-0}"  # 0 means unlimited
 COMPLETED=0
 
+# Create logs directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
 # Claude Code command with full permissions (no manual interaction)
 CLAUDE_CMD="claude --dangerously-skip-permissions --print"
 
-echo "=== FAI Auto-Progress Script ==="
-echo "Project: $PROJECT_ROOT"
-echo "Max items: ${MAX_ITEMS:-unlimited}"
-echo "Mode: Fully automated (no manual interaction)"
-echo ""
+# Logging function - outputs to both stdout and log file
+log() {
+    echo "$@" | tee -a "$LOG_FILE"
+}
+
+log "=== FAI Auto-Progress Script ==="
+log "Project: $PROJECT_ROOT"
+log "Log file: $LOG_FILE"
+log "Max items: ${MAX_ITEMS:-unlimited}"
+log "Mode: Fully automated (no manual interaction)"
+log ""
+log "To monitor in another terminal: tail -f $LOG_FILE"
+log ""
 
 # Function to get the first unchecked TODO item
 get_next_todo() {
@@ -39,11 +52,11 @@ parse_todo() {
 
 # Function to run review and refactor
 run_review_refactor() {
-    echo ""
-    echo "----------------------------------------------"
-    echo "Running review and refactor..."
-    echo "----------------------------------------------"
-    echo ""
+    log ""
+    log "----------------------------------------------"
+    log "Running review and refactor..."
+    log "----------------------------------------------"
+    log ""
 
     REVIEW_PROMPT="Review and refactor the current codebase status:
 
@@ -74,23 +87,23 @@ run_review_refactor() {
 
 If everything looks good and no changes are needed, just confirm the codebase is in good shape."
 
-    if ! $CLAUDE_CMD "$REVIEW_PROMPT"; then
-        echo ""
-        echo "=== Review/refactor step had an issue, continuing anyway ==="
+    if ! $CLAUDE_CMD "$REVIEW_PROMPT" 2>&1 | tee -a "$LOG_FILE"; then
+        log ""
+        log "=== Review/refactor step had an issue, continuing anyway ==="
     fi
 
-    echo ""
-    echo "----------------------------------------------"
-    echo "Review and refactor complete"
-    echo "----------------------------------------------"
+    log ""
+    log "----------------------------------------------"
+    log "Review and refactor complete"
+    log "----------------------------------------------"
 }
 
 # Main loop
 while true; do
     # Check if we've hit the max items limit
     if [[ "$MAX_ITEMS" -gt 0 && "$COMPLETED" -ge "$MAX_ITEMS" ]]; then
-        echo ""
-        echo "=== Reached max items limit ($MAX_ITEMS) ==="
+        log ""
+        log "=== Reached max items limit ($MAX_ITEMS) ==="
         break
     fi
 
@@ -98,8 +111,8 @@ while true; do
     TODO_LINE=$(get_next_todo)
 
     if [[ -z "$TODO_LINE" ]]; then
-        echo ""
-        echo "=== All TODO items completed! ==="
+        log ""
+        log "=== All TODO items completed! ==="
         break
     fi
 
@@ -110,11 +123,11 @@ while true; do
     TASK_NAME=$(echo "$PARSED" | cut -d'|' -f3)
     DESCRIPTION=$(echo "$PARSED" | cut -d'|' -f4)
 
-    echo "=============================================="
-    echo "[$PRIORITY] $TASK_NAME"
-    echo "Description: $DESCRIPTION"
-    echo "=============================================="
-    echo ""
+    log "=============================================="
+    log "[$PRIORITY] $TASK_NAME"
+    log "Description: $DESCRIPTION"
+    log "=============================================="
+    log ""
 
     # Build the prompt for Claude Code
     PROMPT="Complete the following TODO item from CLAUDE.md Progress section:
@@ -142,19 +155,19 @@ Important: Follow the coding conventions in CLAUDE.md. Keep it simple and focuse
 Every new function MUST have corresponding tests."
 
     # Run Claude Code for implementation
-    echo "Starting Claude Code for implementation..."
-    echo ""
+    log "Starting Claude Code for implementation..."
+    log ""
 
-    if ! $CLAUDE_CMD "$PROMPT"; then
-        echo ""
-        echo "=== Claude Code exited with error ==="
-        echo "Stopping auto-progress. You can re-run to continue."
+    if ! $CLAUDE_CMD "$PROMPT" 2>&1 | tee -a "$LOG_FILE"; then
+        log ""
+        log "=== Claude Code exited with error ==="
+        log "Stopping auto-progress. You can re-run to continue."
         exit 1
     fi
 
     COMPLETED=$((COMPLETED + 1))
-    echo ""
-    echo "=== Completed item $COMPLETED: $TASK_NAME ==="
+    log ""
+    log "=== Completed item $COMPLETED: $TASK_NAME ==="
 
     # Run review and refactor after each task
     run_review_refactor
@@ -163,7 +176,8 @@ Every new function MUST have corresponding tests."
     sleep 2
 done
 
-echo ""
-echo "=== Auto-Progress Summary ==="
-echo "Items completed: $COMPLETED"
-echo "Done!"
+log ""
+log "=== Auto-Progress Summary ==="
+log "Items completed: $COMPLETED"
+log "Log saved to: $LOG_FILE"
+log "Done!"
