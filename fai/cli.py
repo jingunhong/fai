@@ -43,6 +43,15 @@ def main() -> None:
         help="Dialogue backend: openai (default) or claude",
     )
     parser.add_argument(
+        "--model",
+        type=str,
+        choices=["gpt-4o", "gpt-4o-mini", "claude-sonnet", "claude-haiku"],
+        default=None,
+        help="LLM model to use. OpenAI: gpt-4o (default), gpt-4o-mini. "
+        "Claude: claude-sonnet (default), claude-haiku. "
+        "If not specified, uses the default for the selected dialogue backend.",
+    )
+    parser.add_argument(
         "--tts",
         type=str,
         choices=["openai", "elevenlabs"],
@@ -135,6 +144,25 @@ def main() -> None:
         print(f"Error: {validation_result.error_message}", file=sys.stderr)
         sys.exit(1)
 
+    # Validate model matches dialogue backend
+    if args.model is not None:
+        openai_models = {"gpt-4o", "gpt-4o-mini"}
+        claude_models = {"claude-sonnet", "claude-haiku"}
+        if args.dialogue == "openai" and args.model not in openai_models:
+            print(
+                f"Error: Model '{args.model}' is not compatible with OpenAI backend. "
+                f"Use one of: {', '.join(sorted(openai_models))}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.dialogue == "claude" and args.model not in claude_models:
+            print(
+                f"Error: Model '{args.model}' is not compatible with Claude backend. "
+                f"Use one of: {', '.join(sorted(claude_models))}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     with contextlib.suppress(KeyboardInterrupt):
         if args.stream:
             # Streaming mode: low-latency, no lip-sync, no recording
@@ -155,6 +183,7 @@ def main() -> None:
                 dialogue_backend=args.dialogue,
                 tts_backend=args.tts,
                 voice=args.voice,
+                model=args.model,
             )
         else:
             run_conversation(
@@ -166,4 +195,5 @@ def main() -> None:
                 voice=args.voice,
                 record=args.record,
                 output_dir=args.output_dir,
+                model=args.model,
             )

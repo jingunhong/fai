@@ -4,7 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fai.dialogue import SYSTEM_PROMPT, generate_response
+from fai.dialogue import (
+    DEFAULT_MODELS,
+    MODEL_IDS,
+    SYSTEM_PROMPT,
+    generate_response,
+)
 from fai.types import DialogueResponse
 
 
@@ -93,8 +98,10 @@ def test_generate_response_with_history(mock_openai_client: MagicMock) -> None:
     assert messages[3] == {"role": "user", "content": "How are you?"}
 
 
-def test_generate_response_uses_gpt4o_model(mock_openai_client: MagicMock) -> None:
-    """Verify generate_response uses the gpt-4o model."""
+def test_generate_response_uses_gpt4o_model_by_default(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response uses the gpt-4o model by default."""
     with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
         generate_response("Test message", [])
 
@@ -212,10 +219,10 @@ def test_generate_response_claude_with_history(
     assert messages[2] == {"role": "user", "content": "How are you?"}
 
 
-def test_generate_response_claude_uses_claude_sonnet_model(
+def test_generate_response_claude_uses_claude_sonnet_model_by_default(
     mock_anthropic_client: MagicMock,
 ) -> None:
-    """Verify Claude backend uses the claude-sonnet-4 model."""
+    """Verify Claude backend uses the claude-sonnet-4 model by default."""
     with patch("fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client):
         generate_response("Test message", [], backend="claude")
 
@@ -300,3 +307,90 @@ def test_generate_response_default_backend_is_openai(
 
     assert isinstance(result, DialogueResponse)
     mock_openai_client.chat.completions.create.assert_called_once()
+
+
+# Tests for model selection
+
+
+def test_model_ids_contains_all_models() -> None:
+    """Verify MODEL_IDS contains all expected model mappings."""
+    assert "gpt-4o" in MODEL_IDS
+    assert "gpt-4o-mini" in MODEL_IDS
+    assert "claude-sonnet" in MODEL_IDS
+    assert "claude-haiku" in MODEL_IDS
+    assert MODEL_IDS["gpt-4o"] == "gpt-4o"
+    assert MODEL_IDS["gpt-4o-mini"] == "gpt-4o-mini"
+    assert MODEL_IDS["claude-sonnet"] == "claude-sonnet-4-20250514"
+    assert MODEL_IDS["claude-haiku"] == "claude-haiku-3-5-20241022"
+
+
+def test_default_models_for_backends() -> None:
+    """Verify DEFAULT_MODELS has correct defaults for each backend."""
+    assert DEFAULT_MODELS["openai"] == "gpt-4o"
+    assert DEFAULT_MODELS["claude"] == "claude-sonnet"
+
+
+def test_generate_response_with_gpt4o_mini_model(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response uses gpt-4o-mini when specified."""
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
+        generate_response("Test message", [], model="gpt-4o-mini")
+
+    call_args = mock_openai_client.chat.completions.create.call_args
+    assert call_args.kwargs["model"] == "gpt-4o-mini"
+
+
+def test_generate_response_with_explicit_gpt4o_model(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response uses gpt-4o when explicitly specified."""
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
+        generate_response("Test message", [], model="gpt-4o")
+
+    call_args = mock_openai_client.chat.completions.create.call_args
+    assert call_args.kwargs["model"] == "gpt-4o"
+
+
+def test_generate_response_with_claude_haiku_model(
+    mock_anthropic_client: MagicMock,
+) -> None:
+    """Verify generate_response uses claude-haiku when specified."""
+    with patch("fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client):
+        generate_response("Test message", [], backend="claude", model="claude-haiku")
+
+    call_args = mock_anthropic_client.messages.create.call_args
+    assert call_args.kwargs["model"] == "claude-haiku-3-5-20241022"
+
+
+def test_generate_response_with_explicit_claude_sonnet_model(
+    mock_anthropic_client: MagicMock,
+) -> None:
+    """Verify generate_response uses claude-sonnet when explicitly specified."""
+    with patch("fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client):
+        generate_response("Test message", [], backend="claude", model="claude-sonnet")
+
+    call_args = mock_anthropic_client.messages.create.call_args
+    assert call_args.kwargs["model"] == "claude-sonnet-4-20250514"
+
+
+def test_generate_response_model_none_uses_default_for_openai(
+    mock_openai_client: MagicMock,
+) -> None:
+    """Verify generate_response uses default model when model is None for OpenAI."""
+    with patch("fai.dialogue.generate.OpenAI", return_value=mock_openai_client):
+        generate_response("Test message", [], backend="openai", model=None)
+
+    call_args = mock_openai_client.chat.completions.create.call_args
+    assert call_args.kwargs["model"] == "gpt-4o"
+
+
+def test_generate_response_model_none_uses_default_for_claude(
+    mock_anthropic_client: MagicMock,
+) -> None:
+    """Verify generate_response uses default model when model is None for Claude."""
+    with patch("fai.dialogue.generate.Anthropic", return_value=mock_anthropic_client):
+        generate_response("Test message", [], backend="claude", model=None)
+
+    call_args = mock_anthropic_client.messages.create.call_args
+    assert call_args.kwargs["model"] == "claude-sonnet-4-20250514"

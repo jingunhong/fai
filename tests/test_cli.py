@@ -90,6 +90,7 @@ def test_cli_passes_backend_to_run_conversation(
         voice=None,
         record=False,
         output_dir=None,
+        model=None,
     )
 
 
@@ -116,6 +117,7 @@ def test_cli_passes_text_mode_to_run_conversation(
         voice=None,
         record=False,
         output_dir=None,
+        model=None,
     )
 
 
@@ -161,6 +163,7 @@ def test_cli_passes_dialogue_backend_to_run_conversation(
         voice=None,
         record=False,
         output_dir=None,
+        model=None,
     )
 
 
@@ -206,6 +209,7 @@ def test_cli_passes_tts_backend_to_run_conversation(
         voice=None,
         record=False,
         output_dir=None,
+        model=None,
     )
 
 
@@ -328,6 +332,7 @@ def test_cli_passes_voice_to_run_conversation(
         voice="echo",
         record=False,
         output_dir=None,
+        model=None,
     )
 
 
@@ -642,3 +647,230 @@ def test_cli_api_key_validation_stream_mode(
         dialogue_backend="claude",
         tts_backend="openai",
     )
+
+
+# Tests for --model flag
+
+
+def test_cli_passes_model_to_run_conversation(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --model is passed to run_conversation."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--model", "gpt-4o-mini"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once_with(
+        face_path,
+        text_mode=False,
+        backend="auto",
+        dialogue_backend="openai",
+        tts_backend="openai",
+        voice=None,
+        record=False,
+        output_dir=None,
+        model="gpt-4o-mini",
+    )
+
+
+def test_cli_default_model_is_none(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify default model is None."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path)]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("model") is None
+
+
+def test_cli_passes_model_to_run_conversation_stream(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify --model is passed to run_conversation_stream."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            [
+                "fai",
+                str(face_path),
+                "--stream",
+                "--dialogue",
+                "claude",
+                "--model",
+                "claude-haiku",
+            ],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation_stream") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once_with(
+        face_path,
+        text_mode=False,
+        dialogue_backend="claude",
+        tts_backend="openai",
+        voice=None,
+        model="claude-haiku",
+    )
+
+
+def test_cli_model_gpt4o_with_openai_backend(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify gpt-4o model works with openai backend."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--model", "gpt-4o"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("model") == "gpt-4o"
+
+
+def test_cli_model_claude_sonnet_with_claude_backend(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify claude-sonnet model works with claude backend."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--dialogue", "claude", "--model", "claude-sonnet"],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("model") == "claude-sonnet"
+    assert kwargs.get("dialogue_backend") == "claude"
+
+
+def test_cli_model_claude_with_openai_backend_fails(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], valid_api_keys: ValidationResult
+) -> None:
+    """Verify Claude model with OpenAI backend exits with error."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--model", "claude-sonnet"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "not compatible with OpenAI backend" in captured.err
+
+
+def test_cli_model_openai_with_claude_backend_fails(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], valid_api_keys: ValidationResult
+) -> None:
+    """Verify OpenAI model with Claude backend exits with error."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--dialogue", "claude", "--model", "gpt-4o"],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "not compatible with Claude backend" in captured.err
+
+
+def test_cli_model_invalid_choice(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Verify invalid model choice is rejected by argparse."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--model", "invalid-model"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        cli.main()
+
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "invalid choice" in captured.err
+
+
+def test_cli_model_gpt4o_mini_with_openai_backend(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify gpt-4o-mini model works with openai backend."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch("sys.argv", ["fai", str(face_path), "--model", "gpt-4o-mini"]),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("model") == "gpt-4o-mini"
+
+
+def test_cli_model_claude_haiku_with_claude_backend(
+    tmp_path: Path, valid_api_keys: ValidationResult
+) -> None:
+    """Verify claude-haiku model works with claude backend."""
+    face_path = tmp_path / "face.jpg"
+    face_path.touch()
+
+    with (
+        patch(
+            "sys.argv",
+            ["fai", str(face_path), "--dialogue", "claude", "--model", "claude-haiku"],
+        ),
+        patch("fai.cli.validate_api_keys", return_value=valid_api_keys),
+        patch("fai.cli.run_conversation") as mock_run,
+    ):
+        cli.main()
+
+    mock_run.assert_called_once()
+    _, kwargs = mock_run.call_args
+    assert kwargs.get("model") == "claude-haiku"
+    assert kwargs.get("dialogue_backend") == "claude"

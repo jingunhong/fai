@@ -36,12 +36,30 @@ SYSTEM_PROMPT = (
 # Type alias for dialogue backend selection
 DialogueBackend = Literal["openai", "claude"]
 
+# Type alias for model selection
+DialogueModel = Literal["gpt-4o", "gpt-4o-mini", "claude-sonnet", "claude-haiku"]
+
+# Model ID mapping for API calls
+MODEL_IDS: dict[str, str] = {
+    "gpt-4o": "gpt-4o",
+    "gpt-4o-mini": "gpt-4o-mini",
+    "claude-sonnet": "claude-sonnet-4-20250514",
+    "claude-haiku": "claude-haiku-3-5-20241022",
+}
+
+# Default models per backend
+DEFAULT_MODELS: dict[DialogueBackend, DialogueModel] = {
+    "openai": "gpt-4o",
+    "claude": "claude-sonnet",
+}
+
 
 @retry_with_backoff()
 def generate_response(
     user_text: str,
     history: list[dict[str, str]],
     backend: DialogueBackend = "openai",
+    model: DialogueModel | None = None,
 ) -> DialogueResponse:
     """Generate an LLM response given user text and conversation history.
 
@@ -50,6 +68,7 @@ def generate_response(
         history: Previous conversation turns, each with "role" and "content" keys.
             Role is either "user" or "assistant".
         backend: Which LLM backend to use ("openai" or "claude").
+        model: Specific model to use. If None, uses the default for the backend.
 
     Returns:
         DialogueResponse containing the generated text.
@@ -62,20 +81,27 @@ def generate_response(
     if not user_text.strip():
         raise ValueError("user_text cannot be empty")
 
-    logger.debug("Generating response using %s backend", backend)
+    if backend not in ("openai", "claude"):
+        raise ValueError(f"Invalid backend: {backend}. Must be 'openai' or 'claude'.")
+
+    # Resolve model to use
+    resolved_model = model if model is not None else DEFAULT_MODELS[backend]
+    model_id = MODEL_IDS[resolved_model]
+
+    logger.debug(
+        "Generating response using %s backend with model %s", backend, model_id
+    )
 
     if backend == "claude":
-        return _generate_with_claude(user_text, history)
-    elif backend == "openai":
-        return _generate_with_openai(user_text, history)
+        return _generate_with_claude(user_text, history, model_id)
     else:
-        raise ValueError(f"Invalid backend: {backend}. Must be 'openai' or 'claude'.")
+        return _generate_with_openai(user_text, history, model_id)
 
 
 def _generate_with_openai(
-    user_text: str, history: list[dict[str, str]]
+    user_text: str, history: list[dict[str, str]], model_id: str
 ) -> DialogueResponse:
-    """Generate response using OpenAI GPT-4o."""
+    """Generate response using OpenAI."""
     logger.debug("Calling OpenAI API with %d history messages", len(history))
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -90,7 +116,7 @@ def _generate_with_openai(
     messages.append({"role": "user", "content": user_text})
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_id,
         messages=messages,
     )
 
@@ -102,7 +128,7 @@ def _generate_with_openai(
 
 
 def _generate_with_claude(
-    user_text: str, history: list[dict[str, str]]
+    user_text: str, history: list[dict[str, str]], model_id: str
 ) -> DialogueResponse:
     """Generate response using Anthropic Claude."""
     logger.debug("Calling Claude API with %d history messages", len(history))
@@ -118,7 +144,7 @@ def _generate_with_claude(
     messages.append({"role": "user", "content": user_text})
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model=model_id,
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=messages,
@@ -134,6 +160,7 @@ def generate_response_stream(
     user_text: str,
     history: list[dict[str, str]],
     backend: DialogueBackend = "openai",
+    model: DialogueModel | None = None,
 ) -> Iterator[TextChunk]:
     """Generate streaming LLM response, yielding text chunks as they arrive.
 
@@ -141,6 +168,7 @@ def generate_response_stream(
         user_text: The user's current message.
         history: Previous conversation turns, each with "role" and "content" keys.
         backend: Which LLM backend to use ("openai" or "claude").
+        model: Specific model to use. If None, uses the default for the backend.
 
     Yields:
         TextChunk objects containing partial response text.
@@ -153,18 +181,23 @@ def generate_response_stream(
     if not user_text.strip():
         raise ValueError("user_text cannot be empty")
 
-    if backend == "claude":
-        yield from _generate_stream_with_claude(user_text, history)
-    elif backend == "openai":
-        yield from _generate_stream_with_openai(user_text, history)
-    else:
+    if backend not in ("openai", "claude"):
         raise ValueError(f"Invalid backend: {backend}. Must be 'openai' or 'claude'.")
+
+    # Resolve model to use
+    resolved_model = model if model is not None else DEFAULT_MODELS[backend]
+    model_id = MODEL_IDS[resolved_model]
+
+    if backend == "claude":
+        yield from _generate_stream_with_claude(user_text, history, model_id)
+    else:
+        yield from _generate_stream_with_openai(user_text, history, model_id)
 
 
 def _generate_stream_with_openai(
-    user_text: str, history: list[dict[str, str]]
+    user_text: str, history: list[dict[str, str]], model_id: str
 ) -> Iterator[TextChunk]:
-    """Generate streaming response using OpenAI GPT-4o."""
+    """Generate streaming response using OpenAI."""
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     messages: list[ChatCompletionMessageParam] = [
@@ -178,7 +211,7 @@ def _generate_stream_with_openai(
     messages.append({"role": "user", "content": user_text})
 
     stream = client.chat.completions.create(
-        model="gpt-4o",
+        model=model_id,
         messages=messages,
         stream=True,
     )
@@ -192,7 +225,7 @@ def _generate_stream_with_openai(
 
 
 def _generate_stream_with_claude(
-    user_text: str, history: list[dict[str, str]]
+    user_text: str, history: list[dict[str, str]], model_id: str
 ) -> Iterator[TextChunk]:
     """Generate streaming response using Anthropic Claude."""
     client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
@@ -207,7 +240,7 @@ def _generate_stream_with_claude(
     messages.append({"role": "user", "content": user_text})
 
     with client.messages.stream(
-        model="claude-sonnet-4-20250514",
+        model=model_id,
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=messages,

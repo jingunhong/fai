@@ -3,7 +3,12 @@
 from pathlib import Path
 from typing import Literal
 
-from fai.dialogue import DialogueBackend, generate_response, generate_response_stream
+from fai.dialogue import (
+    DialogueBackend,
+    DialogueModel,
+    generate_response,
+    generate_response_stream,
+)
 from fai.logging import get_logger
 from fai.motion import animate, animate_stream
 from fai.perception import record_audio, transcribe
@@ -35,6 +40,7 @@ def run_conversation(
     voice: str | None = None,
     record: bool = False,
     output_dir: Path | None = None,
+    model: DialogueModel | None = None,
 ) -> None:
     """Run the main conversation loop.
 
@@ -55,6 +61,7 @@ def run_conversation(
                for ElevenLabs.
         record: If True, save session audio/video to files.
         output_dir: Directory for recordings (default: ./recordings).
+        model: Specific LLM model to use. If None, uses the default for the backend.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -101,7 +108,9 @@ def run_conversation(
 
             # Step 2: Generate LLM response
             logger.debug("Generating LLM response")
-            response = generate_response(user_text, history, backend=dialogue_backend)
+            response = generate_response(
+                user_text, history, backend=dialogue_backend, model=model
+            )
             logger.debug(
                 "LLM response: %s",
                 response.text[:50] + "..."
@@ -154,6 +163,7 @@ def run_conversation(
                 "dialogue_backend": dialogue_backend,
                 "tts_backend": tts_backend,
                 "voice": voice,
+                "model": model,
             }
             metadata_path = recorder.finalize(metadata)
             logger.info("Session saved to: %s", metadata_path)
@@ -187,6 +197,7 @@ def run_conversation_stream(
     dialogue_backend: DialogueBackend = "openai",
     tts_backend: TTSBackend = "openai",
     voice: str | None = None,
+    model: DialogueModel | None = None,
 ) -> None:
     """Run the streaming conversation loop with low-latency response.
 
@@ -203,6 +214,7 @@ def run_conversation_stream(
         dialogue_backend: LLM backend to use for response generation.
         tts_backend: TTS backend to use for speech synthesis.
         voice: Voice to use for TTS.
+        model: Specific LLM model to use. If None, uses the default for the backend.
 
     Raises:
         FileNotFoundError: If face_image doesn't exist.
@@ -241,7 +253,7 @@ def run_conversation_stream(
             # Step 2: Stream LLM response and collect full text
             logger.debug("Streaming LLM response")
             response_text = _stream_dialogue_response(
-                user_text, history, dialogue_backend
+                user_text, history, dialogue_backend, model
             )
             logger.debug("Streaming response complete")
 
@@ -262,6 +274,7 @@ def _stream_dialogue_response(
     user_text: str,
     history: list[dict[str, str]],
     backend: DialogueBackend,
+    model: DialogueModel | None = None,
 ) -> str:
     """Stream dialogue response and print chunks as they arrive.
 
@@ -269,6 +282,7 @@ def _stream_dialogue_response(
         user_text: The user's message.
         history: Conversation history.
         backend: Dialogue backend to use.
+        model: Specific LLM model to use. If None, uses the default for the backend.
 
     Returns:
         Complete response text.
@@ -276,7 +290,9 @@ def _stream_dialogue_response(
     print("AI: ", end="", flush=True)
 
     response_parts: list[str] = []
-    for chunk in generate_response_stream(user_text, history, backend=backend):
+    for chunk in generate_response_stream(
+        user_text, history, backend=backend, model=model
+    ):
         if chunk.text:
             print(chunk.text, end="", flush=True)
             response_parts.append(chunk.text)

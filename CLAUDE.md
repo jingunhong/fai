@@ -55,6 +55,7 @@ uv run fai face.jpg                      # voice mode (default)
 uv run fai face.jpg --text               # text input mode (for debugging)
 uv run fai face.jpg --backend wav2lip    # use specific lip-sync backend
 uv run fai face.jpg --dialogue claude    # use Claude as dialogue backend
+uv run fai face.jpg --model gpt-4o-mini  # use specific LLM model
 uv run fai face.jpg --tts elevenlabs     # use ElevenLabs as TTS backend
 uv run fai face.jpg --voice echo         # use specific TTS voice
 uv run fai face.jpg --record             # save session audio/video to files
@@ -70,6 +71,7 @@ uv run fai face.jpg --log-level debug    # enable debug logging
 - `--text`: use keyboard input instead of microphone
 - `--backend`: lip-sync backend (auto, wav2lip, sadtalker, none)
 - `--dialogue`: dialogue backend (openai, claude)
+- `--model`: LLM model (OpenAI: gpt-4o, gpt-4o-mini; Claude: claude-sonnet, claude-haiku). Defaults to gpt-4o (OpenAI) or claude-sonnet (Claude).
 - `--tts`: TTS backend (openai, elevenlabs)
 - `--voice`: TTS voice (OpenAI: alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer; ElevenLabs: rachel, adam, antoni, bella, domi, elli, josh, arnold)
 - `--record`: save session audio/video to files
@@ -248,7 +250,7 @@ If coverage drops below 80%, the test run will fail. Add tests to bring it back 
 
 #### Features
 
-- [ ] `P12` Model selection: Add `--model` CLI flag to choose specific LLM models (gpt-4o, gpt-4o-mini, claude-sonnet, claude-haiku)
+- [x] `P12` Model selection: Add `--model` CLI flag to choose specific LLM models (gpt-4o, gpt-4o-mini, claude-sonnet, claude-haiku)
 - [ ] `P13` Conversation trimming: Limit conversation history length for long sessions (token counting + oldest message removal)
 - [ ] `P14` Request timeouts: Add configurable timeout for API calls via `--timeout` flag
 - [ ] `P15` Session playback: Add `--playback` mode to replay recorded sessions from JSON metadata
