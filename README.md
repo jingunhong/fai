@@ -1,52 +1,21 @@
 # fai
 
-Real-time AI character video interaction. Talk to an AI-generated face.
+**Face-to-face conversation with an AI character — as natural as a video call with a friend.**
 
-## Quick Start
+You give fai a photo of a face. It comes alive. You speak, it listens. It thinks, then speaks back — lips moving, expression shifting, voice distinct. The conversation flows in real time, turn by turn, just like talking to someone through a screen.
 
-```bash
-uv sync
-cp .env.example .env  # add your API keys
-uv run fai face.jpg
-```
+There is no chat window. No typing back and forth. You see a face, you hear a voice, and you talk. That's it.
 
-## Usage
+## What It Does
 
-```bash
-# Voice conversation (default)
-uv run fai face.jpg
+fai turns a single portrait into a live, talking character powered by AI. The character understands what you say, thinks of a response, and speaks it back while its face animates in sync with the audio. Each exchange follows a natural rhythm: you talk, it listens, it responds.
 
-# Text mode (type instead of talk)
-uv run fai face.jpg --text
-```
+For faster-paced conversations, a streaming mode cuts the wait between your words and the character's reply — you hear the response begin almost immediately.
 
-## Architecture
+Sessions can be recorded and replayed. Voices, personalities, and conversation styles are all configurable. The system is designed so that every component — how it listens, how it thinks, how it speaks, how it moves — can be swapped independently.
 
-```
-You speak → perception (ASR) → dialogue (LLM) → voice (TTS) → motion (lip-sync) → render (display)
-```
+## Getting Started
 
-| Component | Function | MVP Implementation |
-|-----------|----------|--------------------|
-| `perception/` | Audio capture + transcription | OpenAI Whisper API |
-| `dialogue/` | Response generation | OpenAI / Claude API |
-| `voice/` | Text-to-speech | OpenAI TTS / ElevenLabs |
-| `motion/` | Audio → face animation | SadTalker / Wav2Lip |
-| `render/` | Display animated face | OpenCV window |
-| `orchestrator/` | Conversation loop + coordination | Python glue |
+See [`CLAUDE.md`](CLAUDE.md) for setup instructions, CLI usage, and development guide.
 
-## Development
-
-```bash
-uv sync --dev
-uv run pytest
-uv run pre-commit run --all-files
-```
-
-## Configuration
-
-API keys go in `.env`:
-
-```
-OPENAI_API_KEY=sk-...
-```
+See [`REQUIREMENTS.md`](REQUIREMENTS.md) for the full feature specification.
